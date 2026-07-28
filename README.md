@@ -157,6 +157,7 @@ npm test
 - [Requirements v2 - LLM Wiki and Hermes](docs/requirements-v2-llm-wiki-hermes.md)
 - [Architecture](docs/architecture.md)
 - [Development Plan](docs/development-plan.md)
+- [Development Plan v2 - LLM Wiki, Hermes, Slack](docs/development-plan-v2-llm-wiki-hermes.md)
 - [Source Registry](docs/source-registry.md)
 - [Data Schema](docs/data-schema.md)
 - [Operations](docs/operations.md)
