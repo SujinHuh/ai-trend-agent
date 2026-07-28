@@ -153,6 +153,8 @@ npm test
 ## 주요 문서
 
 - [Requirements](docs/requirements.md)
+- [Slack and LLM Wiki Draft Requirements](docs/draft-slack-llm-wiki-requirements.md)
+- [Requirements v2 - LLM Wiki and Hermes](docs/requirements-v2-llm-wiki-hermes.md)
 - [Architecture](docs/architecture.md)
 - [Development Plan](docs/development-plan.md)
 - [Source Registry](docs/source-registry.md)
