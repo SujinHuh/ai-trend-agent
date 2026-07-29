@@ -26,10 +26,10 @@ Task 001 progress:
 
 ```text
 1-11 Done
-12 Pending
+12 Review
 ```
 
-The remaining step is PR preparation.
+The branch has been pushed to GitHub. The remaining step is PR creation and review.
 
 ## Data Model
 

@@ -36,7 +36,7 @@ Status 값:
 | 9 | 로컬 CLI 만들기 | Done | `db:init`, `sample:seed`, and `digest:get -- --date=YYYY-MM-DD` implemented and manually verified. |
 | 10 | 테스트 작성 | Done | CLI tests added; `npm run typecheck` and `npm test` passed with 6 files / 19 tests. |
 | 11 | 검증 리포트 작성 | Done | `validation_report.md` updated with CLI commands, test counts, and remaining risks. |
-| 12 | PR 만들기 | Pending |  |
+| 12 | PR 만들기 | Review | Branch pushed to `origin/feature/001-llm-wiki-local-store`; PR creation/review remains. |
 
 ## Logging Rule
 

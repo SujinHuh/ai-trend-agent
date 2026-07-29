@@ -2,7 +2,7 @@
 
 AI Trend Agent는 빠르게 변하는 AI 트렌드를 사용자가 직접 계속 검색하지 않아도 되도록, 신뢰 가능한 출처와 빠른 신호 채널을 자동 수집하고, LLM Wiki에 저장한 뒤, Hermes agent가 핵심 변화만 선별해 Slack으로 알려주는 개인용 AI 트렌드 에이전트입니다.
 
-현재 상태: v2 요구사항과 개발 순서 정리 단계입니다. 아직 실행 가능한 구현 코드는 없습니다.
+현재 상태: v2 Task 001 `LLM Wiki 로컬 저장소` 구현과 검증이 완료되어 GitHub 브랜치에 push된 상태입니다. 다음 단계는 PR 생성 및 리뷰입니다.
 
 ## 목적
 
@@ -148,29 +148,23 @@ v2 개발 순서:
 
 - Reference: https://rocket-brief.vercel.app/news
 
-## v1 Legacy Task 001 문서
+## v1 Legacy 문서
 
-아래 문서는 v1의 로컬 Markdown 리포트 계획입니다. v2 구현에서는 [Development Plan v2](docs/development-plan-v2-llm-wiki-hermes.md)를 우선합니다.
+v1의 로컬 Markdown 리포트 계획은 보관 문서로 유지합니다. v2 구현에서는 [Development Plan v2](docs/development-plan-v2-llm-wiki-hermes.md)를 우선합니다.
 
-- [requirements.md](docs/task/001_local_collect_markdown_report/requirements.md)
-- [plan.md](docs/task/001_local_collect_markdown_report/plan.md)
-- [validation_report.md](docs/task/001_local_collect_markdown_report/validation_report.md)
-
-Legacy Task 001 구현 후 사용할 예정이었던 명령어:
-
-```bash
-npm run generate -- --date=2026-07-20
-npm run generate -- --date=2026-07-20 --force-refresh
-npm run generate -- --source=google-blog-feed --date=2026-07-20
-npm test
-```
+- [Legacy Task 001](docs/archive/v1/001_local_collect_markdown_report/requirements.md)
 
 ## 주요 문서
+
+문서 입구:
+
+- [Docs Map](docs/README-docs.md)
 
 현재 v2 기준 문서:
 
 - [Requirements v2 - LLM Wiki and Hermes](docs/requirements-v2-llm-wiki-hermes.md)
 - [Development Plan v2 - LLM Wiki, Hermes, Slack](docs/development-plan-v2-llm-wiki-hermes.md)
+- [Implementation Sequence v2](docs/implementation-sequence-v2.md)
 
 v2 보조 및 참고 문서:
 
@@ -178,13 +172,19 @@ v2 보조 및 참고 문서:
 - [Data Schema](docs/data-schema.md)
 - [Operations](docs/operations.md)
 - [Acceptance Criteria](docs/acceptance-criteria.md)
+- [Showcase Workflow](docs/showcase-workflow.md)
+- [Documentation Workflow](docs/doc-workflow.md)
+- [Harness Workflow](docs/harness-workflow.md)
+- [Token Workflow](docs/token-workflow.md)
+- [PR Workflow](docs/pr-workflow.md)
 - [Architecture Reference](docs/architecture.md)
 
 Legacy 또는 대체된 문서:
 
-- [Superseded Slack and LLM Wiki Draft Requirements](docs/draft-slack-llm-wiki-requirements.md)
-- [Legacy Requirements](docs/requirements.md)
-- [Legacy Development Plan](docs/development-plan.md)
+- [Superseded Slack and LLM Wiki Draft Requirements](docs/archive/drafts/draft-slack-llm-wiki-requirements.md)
+- [Legacy Requirements](docs/archive/v1/requirements.md)
+- [Legacy Development Plan](docs/archive/v1/development-plan.md)
+- [Legacy Review Notes](docs/archive/v1/review-notes.md)
 
 ## PR 정책
 

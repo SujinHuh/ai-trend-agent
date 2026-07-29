@@ -211,17 +211,7 @@ docs/task/<task_id>/phase_status.md
 
 각 전체 구현 단계가 사용자가 확인할 수 있는 상태가 되면, 사람이 읽을 수 있는 완료 산출물을 남긴다.
 
-완료 산출물 작성 순서:
-
-1. 해당 큰 단계의 구현과 검증을 끝낸다.
-2. `phase_status.md`에서 해당 task가 검수 완료됐는지 확인한다.
-3. `validation_report.md`의 검증 명령, 결과, 남은 리스크를 확인한다.
-4. `docs/showcase/<NNN_task_name>/completion.md`를 작성한다.
-5. 같은 내용을 브라우저에서 볼 수 있도록 `completion.html`을 작성한다.
-6. 로컬 또는 GCP 공개 경로에서 HTML이 열리는지 확인한다.
-7. 실제 확인 URL과 검증 결과를 `docs/logs/YYYY-MM-DD.md`에 기록한다.
-
-권장 경로:
+완료 산출물은 아래 두 파일을 기본으로 한다.
 
 ```text
 docs/showcase/<NNN_task_name>/
@@ -229,51 +219,7 @@ docs/showcase/<NNN_task_name>/
   completion.html
 ```
 
-확인 URL 규칙:
-
-```text
-http://127.0.0.1:4173/showcase/<NNN_task_name>/completion.html
-```
-
-`<NNN_task_name>`은 placeholder이므로 실제 task 이름으로 바꿔서 연다.
-
-예시:
-
-```text
-http://127.0.0.1:4173/showcase/001_llm_wiki_local_store/completion.html
-```
-
-정적 문서 서버:
-
-```bash
-npm run docs:serve
-```
-
-주의:
-
-- Codex 실행 환경에서 `curl`이 `200 OK`를 반환해도 사용자 브라우저에서 `127.0.0.1` 접근이 보장되지는 않는다.
-- `127.0.0.1`은 브라우저가 실행되는 환경의 localhost를 가리킨다.
-- 브라우저에서 서버 URL이 열리지 않으면 HTML 파일을 직접 연다.
-
-직접 확인 파일:
-
-```text
-/home/sujin941220/Playground/ai-trend-agent/docs/showcase/<NNN_task_name>/completion.html
-```
-
-원칙:
-
-- `completion.md`는 무엇을 만들었는지, 어떻게 실행했는지, 어떤 결과가 나오는지 설명한다.
-- `completion.html`은 같은 내용을 브라우저에서 볼 수 있게 만든다.
-- HTML은 제품용 웹 UI가 아니라 구현 결과 확인용 정적 문서다.
-- HTML의 텍스트와 코드 블록은 사용자가 바로 읽을 수 있어야 한다.
-- 각 큰 단계가 완료되면 로컬 정적 서버를 띄워 사용자가 브라우저에서 직접 확인할 수 있게 한다.
-- 기본 서버 포트는 `4173`이다.
-- 서버가 이미 실행 중이면 새로 띄우지 않고 해당 URL을 재사용한다.
-- 포트가 막혀 있거나 사용 중이면 다른 포트를 사용하고 실제 URL을 작업 로그와 최종 응답에 남긴다.
-- 브라우저에서 `127.0.0.1`이 열리지 않으면 로컬 파일 경로로 `completion.html`을 직접 확인한다.
-- GCP VM 외부에서 접근해야 하면 이미 열려 있는 nginx 공개 경로에 HTML을 배치하고, 외부 IP URL을 작업 로그와 최종 응답에 남긴다.
-- 각 완료 산출물은 해당 task의 `validation_report.md`와 `phase_status.md`를 근거로 작성한다.
+세부 작성 순서, 로컬 서버 URL, GCP nginx 공개 URL 기록 방식은 [Showcase Workflow](showcase-workflow.md)를 따른다.
 
 Task 001 완료 확인 산출물:
 

@@ -52,7 +52,7 @@ HH:MM | type | summary | files
 서브 에이전트 검수 결과는 전체 전문 대신 다음만 남긴다.
 
 ```text
-HH:MM | review | 핵심 지적: 문서 간 순서 불일치, 반영 완료 | docs/requirements.md
+HH:MM | review | 핵심 지적: 문서 간 순서 불일치, 반영 완료 | docs/requirements-v2-llm-wiki-hermes.md
 ```
 
 ## 6. 대화 방식

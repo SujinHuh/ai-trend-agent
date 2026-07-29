@@ -44,7 +44,7 @@ HH:MM | type | summary | files
 예시:
 
 ```text
-20:45 | docs | 개발 순서를 다중 LLM 리뷰 우선으로 조정 | docs/development-plan.md
+20:45 | docs | 개발 순서를 LLM Wiki 우선으로 조정 | docs/development-plan-v2-llm-wiki-hermes.md
 ```
 
 원칙:
