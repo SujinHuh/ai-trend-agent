@@ -138,8 +138,15 @@ v2 개발 순서:
 7. 소셜 allow-list 확장
 8. Backend, Frontend, DevOps 도메인 확장
 9. Slack 피드백과 개인화
+10. 웹 뉴스 화면
 
 자세한 개발 순서는 [docs/development-plan-v2-llm-wiki-hermes.md](docs/development-plan-v2-llm-wiki-hermes.md)를 참고합니다.
+
+실제 구현 순서와 task별 세부 실행 순서는 [docs/implementation-sequence-v2.md](docs/implementation-sequence-v2.md)를 참고합니다.
+
+웹 뉴스 화면은 MVP 이후 확장으로 둡니다. Rocket Brief의 뉴스 화면은 후속 UI를 설계할 때 참고할 레퍼런스로 기록합니다.
+
+- Reference: https://rocket-brief.vercel.app/news
 
 ## v1 Legacy Task 001 문서
 

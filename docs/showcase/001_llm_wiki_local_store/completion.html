@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM Wiki Local Store Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --warn: #9a5b00;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .pending {
+        background: #fff5df;
+        color: var(--warn);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 001 Verified</span>
+        <h1>LLM Wiki Local Store</h1>
+        <p>
+          AI Trend Agent v2의 첫 번째 기반 작업입니다. 수집, 요약, Slack, Hermes cron,
+          이후 웹 뉴스 화면이 사용할 SQLite 기반 로컬 저장소를 만들었습니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>11 / 12</strong>
+          <p>남은 단계는 PR 준비입니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>19 passed</strong>
+          <p>6개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>CLI 검증</span>
+          <strong>3 commands</strong>
+          <p>초기화, 샘플 seed, 날짜별 조회가 통과했습니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>SQLite 기반 LLM Wiki 로컬 저장소</li>
+          <li><code>TrendItem</code>, <code>Digest</code>, <code>SourceEvidence</code> 저장</li>
+          <li>Digest와 TrendItem 관계 저장</li>
+          <li>canonical URL 정규화와 중복 제거</li>
+          <li>SHA-256 기반 stable ID 생성</li>
+          <li>날짜별 digest 조회</li>
+          <li>로컬 CLI와 자동 테스트</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run db:init -- --db=/tmp/ai-trend-agent-task001.sqlite
+npm run sample:seed -- --db=/tmp/ai-trend-agent-task001.sqlite
+npm run digest:get -- --db=/tmp/ai-trend-agent-task001.sqlite --date=2026-07-29</code></pre>
+      </section>
+
+      <section class="card">
+        <h2>검증 결과</h2>
+        <pre><code>npm run typecheck  passed
+npm test           passed
+6 test files passed
+19 tests passed
+
+Manual CLI validation:
+db:init -> passed
+sample:seed -> passed
+digest:get --date=2026-07-29 -> passed</code></pre>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>완료</h2>
+          <ul>
+            <li>1-11번 단계 완료</li>
+            <li>서브 에이전트 최종 검수 통과</li>
+            <li>검증 리포트와 작업 로그 기록 완료</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>남은 일</h2>
+          <span class="status pending">Step 12 Pending</span>
+          <p style="margin-top: 12px">PR 준비와 리뷰 흐름만 남았습니다.</p>
+        </div>
+      </section>
+
+      <section class="card links">
+        <h2>관련 문서</h2>
+        <ul>
+          <li><a href="../../task/001_llm_wiki_local_store/phase_status.md">phase_status.md</a></li>
+          <li><a href="../../task/001_llm_wiki_local_store/validation_report.md">validation_report.md</a></li>
+          <li><a href="../../implementation-sequence-v2.md">implementation-sequence-v2.md</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
