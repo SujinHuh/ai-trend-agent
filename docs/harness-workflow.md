@@ -44,75 +44,78 @@ docs/task/NNN_task_name/
 
 각 작업은 로컬 실행 명령, 성공 기준, 검증 결과를 반드시 남긴다.
 
-## 4. MVP 첫 작업 후보
+## 4. v2 작업 순서
 
 첫 번째 하네스 작업:
 
 ```text
-docs/task/001_local_collect_markdown_report/
+docs/task/001_llm_wiki_local_store/
 ```
 
 목표:
 
-- 로컬 명령어로 공식 출처를 수집하고 Markdown 리포트를 생성한다.
+- SQLite 기반 로컬 LLM Wiki 저장소를 만든다.
 
 포함 범위:
 
-- 프로젝트 초기 코드 구조
-- Source Registry 초안
-- Article 스키마
-- RSS 또는 HTML 수집기
-- 날짜 필터링
-- 중복 제거
-- Markdown 리포트 출력
+- Node.js + TypeScript 프로젝트 초기화
+- SQLite schema
+- `TrendItem`, `Digest`, `SourceEvidence` 저장
+- canonical URL 중복 제거
+- stable ID 생성
+- 로컬 CLI
+- 테스트와 검증 리포트
 
 제외 범위:
 
+- 실제 외부 출처 수집
+- LLM 호출
+- Slack 발송
+- Hermes `/cron`
 - GCP 배포
-- 이메일 발송
-- Notion 저장
-- TTS
-- X/Twitter, Threads, YouTube 수집
+- 웹 뉴스 화면
 
 두 번째 하네스 작업:
 
 ```text
-docs/task/002_local_llm_summary_review/
+docs/task/002_ai_official_source_ingestion/
 ```
 
 목표:
 
-- 수집된 Markdown 원문 리포트를 LLM 요약 리포트로 변환하고, 다중 LLM 리뷰 결과를 붙인다.
+- AI 공식 출처에서 최신 항목을 가져와 LLM Wiki에 저장한다.
 
 세 번째 하네스 작업:
 
 ```text
-docs/task/003_notion_report_archive/
+docs/task/003_trenditem_ranking/
 ```
 
 목표:
 
-- 요약 리포트와 항목을 Notion 데이터베이스에 저장한다.
+- 수집된 항목을 daily digest 후보로 변환하고 중요도를 매긴다.
 
 네 번째 하네스 작업:
 
 ```text
-docs/task/004_tts_briefing/
+docs/task/004_slack_manual_delivery/
 ```
 
 목표:
 
-- 음성용 스크립트와 TTS 오디오를 생성한다.
+- 저장된 Digest를 Slack Incoming Webhook으로 수동 발송한다.
 
 다섯 번째 하네스 작업:
 
 ```text
-docs/task/005_email_delivery/
+docs/task/005_hermes_cron/
 ```
 
 목표:
 
-- 이메일에 핵심 요약, Notion 링크, 음성 브리핑 링크를 포함해 발송한다.
+- Hermes `/cron`이 매일 `07:00 KST`에 digest 작업을 실행하게 한다.
+
+전체 1-10번 순서는 [Implementation Sequence v2](implementation-sequence-v2.md)를 따른다.
 
 ## 5. 개발 루프
 

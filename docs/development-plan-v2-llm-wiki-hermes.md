@@ -241,7 +241,32 @@ LLM Wiki
 - 사용자 피드백이 `UserInterestProfile`에 저장된다.
 - 다음 digest 랭킹에 피드백이 반영된다.
 
-## 14. MVP에서 하지 않을 것
+## 14. Phase 10: 웹 뉴스 화면
+
+목표:
+
+- Slack digest와 LLM Wiki에 쌓인 TrendItem을 웹에서 탐색할 수 있게 만든다.
+
+포함 범위:
+
+- 날짜별 news view
+- Top Signals 목록
+- 항목별 원문 링크
+- source, tag, domain, confidence, importance 표시
+- LLM Wiki stable ID 표시
+- 나중에 검색과 필터를 붙일 수 있는 URL 구조
+
+참고 레퍼런스:
+
+- Rocket Brief news 화면: https://rocket-brief.vercel.app/news
+
+완료 기준:
+
+- 저장된 Digest와 TrendItem을 기준으로 웹 화면이 렌더링된다.
+- 화면은 수집, 중복 제거, 요약, Slack 발송 흐름이 검증된 뒤 붙인다.
+- MVP 초기 단계에서는 웹 UI가 핵심 경로를 막지 않는다.
+
+## 15. MVP에서 하지 않을 것
 
 - 매시간 Slack digest
 - urgent alert 즉시 발송
@@ -255,7 +280,7 @@ LLM Wiki
 - 웹 UI
 - Backend, Frontend, DevOps full digest
 
-## 15. 첫 구현 추천
+## 16. 첫 구현 추천
 
 가장 먼저 할 작업은 Phase 1이다.
 
@@ -270,3 +295,5 @@ SQLite 기반 LLM Wiki 저장소 만들기
 ```
 
 이 task가 끝나면 Hermes agent와 Slack은 임시 데이터가 아니라 실제 저장된 TrendItem과 Digest를 기준으로 동작할 수 있다.
+
+Task 001의 세부 실행 순서는 [Task 001 Implementation Sequence](task/001_llm_wiki_local_store/implementation-sequence.md)를 따른다.

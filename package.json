@@ -1,0 +1,28 @@
+{
+  "name": "ai-trend-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs:serve": "node scripts/serve-docs.mjs",
+    "db:init": "node --import tsx src/cli.ts db:init",
+    "sample:seed": "node --import tsx src/cli.ts sample:seed",
+    "digest:get": "node --import tsx src/cli.ts digest:get"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}
