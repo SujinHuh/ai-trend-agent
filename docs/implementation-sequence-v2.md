@@ -15,6 +15,8 @@ Reference:
 - 프로젝트 적용 메모: [docs/llm-wiki-karpathy-reference.md](llm-wiki-karpathy-reference.md)
 - 빠른 AI 개인/소셜 신호 watch-list: [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
 - LLM Wiki 보강 gap 분석: [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)
+- 남은 구현 번호표: [docs/remaining-implementation-plan.md](remaining-implementation-plan.md)
+- social signal 수집 방식: [docs/social-signal-collection-plan.md](social-signal-collection-plan.md)
 
 ## 2. 전체 구현 순서
 
@@ -82,9 +84,18 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - 요약
 - `whyItMatters`
 - `practicalImpact`
+- `trendCategory`
+- `actionLevel`
 - confidence score
 - importance score
+- source lineage
+- confirmation status
+- staleness policy
 - urgent candidate 분리
+
+상세 실행 순서:
+
+- [docs/task/003_trenditem_ranking/implementation-sequence.md](task/003_trenditem_ranking/implementation-sequence.md)
 
 ### 4. Slack 수동 발송
 
@@ -146,6 +157,7 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 참고:
 
 - [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
+- [docs/task/007_social_allow_list/implementation-sequence.md](task/007_social_allow_list/implementation-sequence.md)
 
 ### 8. Backend, Frontend, DevOps 도메인 확장
 

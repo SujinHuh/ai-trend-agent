@@ -23,6 +23,8 @@
 - 서브 에이전트 리뷰에서 발견된 HTML selector, `maxItemsPerFetch`, non-2xx cache 처리 문제를 수정했습니다.
 - live ingestion 안정화를 위해 Anthropic 날짜 추출, RSS non-feed 실패 처리, valid empty feed 처리, enabled source 구성을 보완했습니다.
 - Karpathy LLM Wiki 원문 참고, trusted AI signal watch-list, hotfix gap analysis를 추가해 Task 003 handoff 기준을 보강했습니다.
+- 아직 미구현 항목을 1-20번으로 재번호화하고 Task 003/Task 007/later lint로 분리했습니다.
+- X/Twitter/Threads/Reddit/HN 수집 방식을 social signal collection plan에 명확히 분리했습니다.
 
 ## ❓ 변경 이유
 
@@ -114,6 +116,7 @@ npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live-0730.sqlite --cache-
 - Task 002는 수집/저장까지만 포함합니다. LLM 요약, 랭킹, Slack 발송, Hermes `/cron`, GCP 배포, 웹 UI는 포함하지 않습니다.
 - 현재 브랜치는 Task 001 PR이 아직 merge되지 않아 `feature/001-llm-wiki-local-store` 기반으로 시작했습니다.
 - X/Threads/Reddit/HN 및 유명 AI 개인 계정은 빠른 감지용 후보로만 기록했고, Task 002 enabled ingestion source에는 포함하지 않았습니다.
+- X/Threads는 browser scraping이 아니라 공식 API 또는 수동 export/import를 전제로 합니다. Reddit/HN은 RSS/API 기반으로 시작합니다.
 
 ## 👀 리뷰 요청
 

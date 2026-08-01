@@ -13,6 +13,8 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 5. [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
 6. [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
 7. [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
+8. [Remaining Implementation Plan](remaining-implementation-plan.md)
+9. [Social Signal Collection Plan](social-signal-collection-plan.md)
 
 ## 현재 작업
 
@@ -34,6 +36,15 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 - [Task 002 Phase Status](task/002_ai_official_source_ingestion/phase_status.md)
 - [Task 002 Validation Report](task/002_ai_official_source_ingestion/validation_report.md)
 - [Task 002 Step Plans](task/002_ai_official_source_ingestion/steps/README.md)
+
+후속 작업 문서:
+
+- [Task 003 Requirements](task/003_trenditem_ranking/requirements.md)
+- [Task 003 Implementation Sequence](task/003_trenditem_ranking/implementation-sequence.md)
+- [Task 003 Phase Status](task/003_trenditem_ranking/phase_status.md)
+- [Task 007 Requirements](task/007_social_allow_list/requirements.md)
+- [Task 007 Implementation Sequence](task/007_social_allow_list/implementation-sequence.md)
+- [Task 007 Phase Status](task/007_social_allow_list/phase_status.md)
 
 완료 확인 산출물:
 
@@ -60,6 +71,8 @@ http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.
 - [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
 - [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
 - [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
+- [Remaining Implementation Plan](remaining-implementation-plan.md)
+- [Social Signal Collection Plan](social-signal-collection-plan.md)
 - [Data Schema](data-schema.md)
 - [Operations](operations.md)
 - [Architecture Reference](architecture.md)

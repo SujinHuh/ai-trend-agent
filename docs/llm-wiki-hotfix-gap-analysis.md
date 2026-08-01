@@ -81,6 +81,12 @@ Karpathy LLM Wiki 원문을 참고한 보강은 `feature/002-ai-official-source-
 11. `stalenessPolicy`
 12. daily digest 후보 생성 CLI
 
+Task 003 detailed docs:
+
+- [Task 003 Requirements](task/003_trenditem_ranking/requirements.md)
+- [Task 003 Implementation Sequence](task/003_trenditem_ranking/implementation-sequence.md)
+- [Task 003 Phase Status](task/003_trenditem_ranking/phase_status.md)
+
 ## Task 007에 꼭 넣어야 할 것
 
 1. trusted individual registry
@@ -91,6 +97,20 @@ Karpathy LLM Wiki 원문을 참고한 보강은 `feature/002-ai-official-source-
 6. social item normalization
 7. official-source cross-confirmation
 8. noisy account pruning policy
+
+Task 007 detailed docs:
+
+- [Task 007 Requirements](task/007_social_allow_list/requirements.md)
+- [Task 007 Implementation Sequence](task/007_social_allow_list/implementation-sequence.md)
+- [Task 007 Phase Status](task/007_social_allow_list/phase_status.md)
+
+## Agent Delegation Result
+
+| Agent role | Delegated area | Result |
+| --- | --- | --- |
+| Ranking agent | Task 003 synthesis/ranking | Recommends additive assessment/lineage tables, deterministic ranker first, and strict `needs_confirmation` gate. |
+| Social signal agent | Task 007 trusted/social collection | Recommends API/RSS/manual export, not browser scraping; X/Threads require explicit API/token review. |
+| Validation agent | lint/index/query controls | Recommends minimal Task 003 query/index and a later lint task after synthesis fields exist. |
 
 ## Recommended Next Action
 
