@@ -2,7 +2,7 @@
 
 ## Status
 
-Task 002 implementation is complete through local validation.
+Task 002 implementation is merged into `main`.
 
 Done:
 
@@ -19,10 +19,7 @@ Done:
 - Step 11 ingestion CLI
 - Step 12 tests
 - Step 13 validation report
-
-Remaining:
-
-- Step 14 PR review/merge
+- Step 14 PR merged into `main`
 
 ## Planning Validation
 
@@ -249,7 +246,7 @@ Sub-agent review findings addressed:
 
 ## PR
 
-Ready PR:
+Merged PR:
 
 ```text
 https://github.com/SujinHuh/ai-trend-agent/pull/1

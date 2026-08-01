@@ -26,10 +26,10 @@ Task 001 progress:
 
 ```text
 1-11 Done
-12 Review
+12 Done
 ```
 
-The branch has been pushed to GitHub. The remaining step is PR creation and review.
+The branch and PR are merged into `main`.
 
 ## Data Model
 

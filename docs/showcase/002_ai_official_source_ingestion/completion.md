@@ -111,10 +111,10 @@ Task 002 progress:
 
 ```text
 Steps 1-13 Done
-Step 14 Review
+Step 14 Done
 ```
 
-The branch and PR are pushed:
+The branch and PR are merged into `main`:
 
 ```text
 https://github.com/SujinHuh/ai-trend-agent/pull/1
