@@ -1,0 +1,313 @@
+[
+  {
+    "id": "openai-news",
+    "name": "OpenAI News",
+    "type": "html",
+    "url": "https://openai.com/news/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": true,
+    "priority": 100,
+    "tags": ["openai", "chatgpt", "codex", "api"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/news/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "anthropic-news",
+    "name": "Anthropic News",
+    "type": "html",
+    "url": "https://www.anthropic.com/news",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": true,
+    "priority": 100,
+    "tags": ["anthropic", "claude", "claude-code"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/news/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "self",
+      "excerptSelector": "self",
+      "dateFormatHint": "MMM D, YYYY"
+    }
+  },
+  {
+    "id": "google-blog-feed",
+    "name": "Google Blog Feed",
+    "type": "rss",
+    "url": "https://blog.google/feed/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "rss_parser",
+    "enabled": true,
+    "priority": 90,
+    "tags": ["google", "gemini", "ai", "cloud"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    }
+  },
+  {
+    "id": "github-openai-python-releases",
+    "name": "OpenAI Python GitHub Releases",
+    "type": "github_releases",
+    "url": "https://github.com/openai/openai-python/releases.atom",
+    "category": "developer_tool",
+    "credibility": "official",
+    "parserType": "github_releases_atom",
+    "enabled": true,
+    "priority": 70,
+    "tags": ["openai", "sdk", "python", "github-releases"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    }
+  },
+  {
+    "id": "google-deepmind-blog",
+    "name": "Google DeepMind Blog",
+    "type": "html",
+    "url": "https://deepmind.google/discover/blog/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 85,
+    "tags": ["google", "deepmind", "gemini", "research", "ai"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/discover/blog/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "mistral-news",
+    "name": "Mistral News",
+    "type": "html",
+    "url": "https://mistral.ai/news/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 84,
+    "tags": ["mistral", "model", "agent", "research"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/news/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "meta-ai-blog",
+    "name": "Meta AI Blog",
+    "type": "html",
+    "url": "https://ai.meta.com/blog/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 83,
+    "tags": ["meta", "llama", "open-model", "research"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/blog/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "huggingface-blog-feed",
+    "name": "Hugging Face Blog Feed",
+    "type": "rss",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "category": "open_source",
+    "credibility": "official",
+    "parserType": "rss_parser",
+    "enabled": false,
+    "priority": 82,
+    "tags": ["huggingface", "open-source", "models", "tooling"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    }
+  },
+  {
+    "id": "moonshot-kimi-blog",
+    "name": "Moonshot AI Kimi Blog",
+    "type": "html",
+    "url": "https://platform.kimi.com/blog",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 81,
+    "tags": ["moonshot", "kimi", "model", "long-context"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/blog']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "kimi-k3-page",
+    "name": "Kimi K3 Page",
+    "type": "html",
+    "url": "https://www.kimi.com/tr/blog/kimi-k3",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 80,
+    "tags": ["kimi", "k3", "model", "long-context"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "main a",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "deepseek-api-updates",
+    "name": "DeepSeek API Updates",
+    "type": "html",
+    "url": "https://api-docs.deepseek.com/updates",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 79,
+    "tags": ["deepseek", "api", "model", "openai-compatible"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/updates']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "qwen-blog",
+    "name": "Qwen Blog",
+    "type": "html",
+    "url": "https://qwenlm.github.io/blog/",
+    "category": "llm_vendor",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 78,
+    "tags": ["qwen", "open-model", "coding", "research"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/blog/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "time",
+      "excerptSelector": "self",
+      "dateFormatHint": "site-specific"
+    }
+  },
+  {
+    "id": "spring-news",
+    "name": "Spring News and Events",
+    "type": "html",
+    "url": "https://spring.io/blog/category/news/",
+    "category": "backend",
+    "credibility": "official",
+    "parserType": "html_list_parser",
+    "enabled": false,
+    "priority": 60,
+    "tags": ["spring", "spring-boot", "java", "backend"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    },
+    "htmlParserConfig": {
+      "listSelector": "body",
+      "itemSelector": "a[href*='/blog/']",
+      "titleSelector": "self",
+      "urlSelector": "self",
+      "dateSelector": "self",
+      "excerptSelector": "self",
+      "dateFormatHint": "Month DD, YYYY"
+    }
+  }
+]

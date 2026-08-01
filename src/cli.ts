@@ -5,12 +5,17 @@ import { fileURLToPath } from "node:url";
 import type { DigestWithItems } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
+import { ingestSources } from "./sources/ingest-sources.js";
+import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-config.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
 
 interface CliOptions {
   dbPath: string;
+  sourceConfigPath: string;
+  forceRefresh: boolean;
+  cacheRoot?: string;
   date?: string;
 }
 
@@ -27,6 +32,12 @@ async function main(): Promise<void> {
       break;
     case "digest:get":
       getDigest(options);
+      break;
+    case "sources:validate":
+      validateSources(options);
+      break;
+    case "ingest:run":
+      await runIngestion(options);
       break;
     default:
       printUsageAndExit(command);
@@ -128,6 +139,57 @@ function getDigest(options: CliOptions): void {
   }
 }
 
+function validateSources(options: CliOptions): void {
+  const sources = loadSourceConfigs(options.sourceConfigPath, { includeDisabled: true });
+  const enabledSources = sources.filter((source) => source.enabled);
+
+  console.log(
+    JSON.stringify(
+      {
+        configPath: options.sourceConfigPath,
+        sourceCount: sources.length,
+        enabledSourceCount: enabledSources.length,
+        enabledSourceIds: enabledSources.map((source) => source.id)
+      },
+      null,
+      2
+    )
+  );
+}
+
+async function runIngestion(options: CliOptions): Promise<void> {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const sources = loadSourceConfigs(options.sourceConfigPath);
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const ingestOptions = {
+      reportDate: options.date,
+      forceRefresh: options.forceRefresh,
+      ...(options.cacheRoot === undefined ? {} : { cacheRoot: options.cacheRoot })
+    };
+    const result = await ingestSources(sources, store, ingestOptions);
+
+    console.log(
+      JSON.stringify(
+        {
+          ...result,
+          dbPath: options.dbPath,
+          sourceConfigPath: options.sourceConfigPath
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
 function openStore(dbPath: string) {
   const resolvedDbPath = resolve(dbPath);
   mkdirSync(dirname(resolvedDbPath), { recursive: true });
@@ -138,7 +200,9 @@ function openStore(dbPath: string) {
 
 function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = {
-    dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH
+    dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
+    sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
+    forceRefresh: false
   };
 
   for (const arg of args) {
@@ -146,6 +210,12 @@ function parseOptions(args: string[]): CliOptions {
       options.date = arg.slice("--date=".length);
     } else if (arg.startsWith("--db=")) {
       options.dbPath = arg.slice("--db=".length);
+    } else if (arg.startsWith("--config=")) {
+      options.sourceConfigPath = arg.slice("--config=".length);
+    } else if (arg === "--force-refresh") {
+      options.forceRefresh = true;
+    } else if (arg.startsWith("--cache-root=")) {
+      options.cacheRoot = arg.slice("--cache-root=".length);
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -173,8 +243,13 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run db:init",
       "  npm run sample:seed",
       "  npm run digest:get -- --date=YYYY-MM-DD",
+      "  npm run sources:validate",
+      "  npm run ingest:run -- --date=YYYY-MM-DD",
       "Options:",
-      "  --db=PATH  Override the SQLite database path"
+      "  --db=PATH          Override the SQLite database path",
+      "  --config=PATH      Override the source registry config path",
+      "  --cache-root=PATH  Override the source cache root",
+      "  --force-refresh    Bypass source cache"
     ].join("\n")
   );
 }

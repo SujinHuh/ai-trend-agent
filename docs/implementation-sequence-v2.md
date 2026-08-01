@@ -55,6 +55,14 @@ Reference:
 - Google Blog Feed
 - OpenAI Python GitHub Releases
 
+상세 실행 순서:
+
+- [docs/task/002_ai_official_source_ingestion/implementation-sequence.md](task/002_ai_official_source_ingestion/implementation-sequence.md)
+
+진행 상태:
+
+- [docs/task/002_ai_official_source_ingestion/phase_status.md](task/002_ai_official_source_ingestion/phase_status.md)
+
 ### 3. TrendItem 생성과 랭킹
 
 목표:

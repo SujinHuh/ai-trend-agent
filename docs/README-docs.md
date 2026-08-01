@@ -13,7 +13,7 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 ## 현재 작업
 
-현재 작업은 `001_llm_wiki_local_store`다.
+현재 작업은 `001_llm_wiki_local_store` PR 생성/리뷰 이후 `002_ai_official_source_ingestion`로 넘어간다.
 
 작업 문서:
 
@@ -22,6 +22,15 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 - [Task 001 Implementation Sequence](task/001_llm_wiki_local_store/implementation-sequence.md)
 - [Task 001 Phase Status](task/001_llm_wiki_local_store/phase_status.md)
 - [Task 001 Validation Report](task/001_llm_wiki_local_store/validation_report.md)
+
+다음 작업 문서:
+
+- [Task 002 Requirements](task/002_ai_official_source_ingestion/requirements.md)
+- [Task 002 Plan](task/002_ai_official_source_ingestion/plan.md)
+- [Task 002 Implementation Sequence](task/002_ai_official_source_ingestion/implementation-sequence.md)
+- [Task 002 Phase Status](task/002_ai_official_source_ingestion/phase_status.md)
+- [Task 002 Validation Report](task/002_ai_official_source_ingestion/validation_report.md)
+- [Task 002 Step Plans](task/002_ai_official_source_ingestion/steps/README.md)
 
 완료 확인 산출물:
 
@@ -52,6 +61,8 @@ http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.
 ## 보관 문서
 
 아래 문서는 현재 구현 기준이 아니라 과거 v1 또는 초안 참고 문서다.
+
+`docs/implementation-sequence-v1.md`는 현재 없다. v1 구현 흐름은 아래 archive 문서들을 참고하되, 현재 실행 기준은 v2 문서와 task별 implementation sequence다.
 
 - [Legacy Requirements](archive/v1/requirements.md)
 - [Legacy Development Plan](archive/v1/development-plan.md)
