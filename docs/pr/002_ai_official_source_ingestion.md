@@ -25,6 +25,7 @@
 - Karpathy LLM Wiki 원문 참고, trusted AI signal watch-list, hotfix gap analysis를 추가해 Task 003 handoff 기준을 보강했습니다.
 - 아직 미구현 항목을 1-20번으로 재번호화하고 Task 003/Task 007/later lint로 분리했습니다.
 - X/Twitter/Threads/Reddit/HN 수집 방식을 social signal collection plan에 명확히 분리했습니다.
+- Task 002 완료 확인용 `completion.md`/`completion.html` 중간 보고서를 추가하고, GCP nginx 공개 URL에서 실제 HTML 본문을 확인했습니다.
 
 ## ❓ 변경 이유
 
@@ -105,6 +106,16 @@ npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live-0730.sqlite --cache-
 - `failedSourceCount`: 0
 - `insertedOrUpdatedCount`: 1
 
+완료 산출물 확인:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+- Passed.
+- GCP nginx `/ai-trend-agent/` 경로에서 Task 002 HTML 본문 반환 확인.
+- docs 서버는 `ai-trend-agent-docs.service`로 실행 중.
+
 ## 🔗 연관 이슈
 
 <!-- 관련된 이슈 번호를 입력해주세요. (예: Closes #123) -->
@@ -117,6 +128,7 @@ npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live-0730.sqlite --cache-
 - 현재 브랜치는 Task 001 PR이 아직 merge되지 않아 `feature/001-llm-wiki-local-store` 기반으로 시작했습니다.
 - X/Threads/Reddit/HN 및 유명 AI 개인 계정은 빠른 감지용 후보로만 기록했고, Task 002 enabled ingestion source에는 포함하지 않았습니다.
 - X/Threads는 browser scraping이 아니라 공식 API 또는 수동 export/import를 전제로 합니다. Reddit/HN은 RSS/API 기반으로 시작합니다.
+- `docs/showcase/.../completion.md`는 리뷰 가능한 기록 원본, `completion.html`은 브라우저 확인용 중간 보고서로 git에 포함합니다. `dist/` 산출물은 커밋하지 않습니다.
 
 ## 👀 리뷰 요청
 

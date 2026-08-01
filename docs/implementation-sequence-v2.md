@@ -275,3 +275,26 @@ Task 001 GCP nginx 공개 URL:
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.html
 ```
+
+Task 002 완료 확인 산출물:
+
+- [docs/showcase/002_ai_official_source_ingestion/completion.md](showcase/002_ai_official_source_ingestion/completion.md)
+- [docs/showcase/002_ai_official_source_ingestion/completion.html](showcase/002_ai_official_source_ingestion/completion.html)
+
+Task 002 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+Task 002 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+Task 002 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
+```

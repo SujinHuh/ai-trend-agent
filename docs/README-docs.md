@@ -50,11 +50,14 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 - [Task 001 Completion Markdown](showcase/001_llm_wiki_local_store/completion.md)
 - [Task 001 Completion HTML](showcase/001_llm_wiki_local_store/completion.html)
+- [Task 002 Completion Markdown](showcase/002_ai_official_source_ingestion/completion.md)
+- [Task 002 Completion HTML](showcase/002_ai_official_source_ingestion/completion.html)
 
 외부 확인 URL:
 
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.html
+http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
 ```
 
 ## 작업 흐름 문서

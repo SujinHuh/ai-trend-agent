@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Official Source Ingestion Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --warn: #9a5b00;
+        --danger: #b42318;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 0 0 10px;
+        font-size: 17px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .pending {
+        background: #fff5df;
+        color: var(--warn);
+      }
+
+      .blocked {
+        background: #fff0ee;
+        color: var(--danger);
+      }
+
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 002 Verified</span>
+        <h1>AI Official Source Ingestion</h1>
+        <p>
+          AI Trend Agent v2의 두 번째 기반 작업입니다. 공식 AI 출처를 가져와 파싱,
+          정규화, 캐시 저장, LLM Wiki 저장소 연결까지 검증했습니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>13 / 14</strong>
+          <p>남은 단계는 PR review/merge입니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>49 passed</strong>
+          <p>11개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>Enabled sources</span>
+          <strong>4</strong>
+          <p>13개 source 중 4개를 MVP로 활성화했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>Live validation</span>
+          <strong>0 failures</strong>
+          <p>3개 날짜 live ingestion에서 source failure가 없었습니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>Source Registry 설정과 검증 로직</li>
+          <li>HTTP fetch, timeout, retry, raw snapshot cache</li>
+          <li>RSS/Atom, GitHub Releases Atom, static HTML list parser</li>
+          <li>KST report window 필터링</li>
+          <li>source-level partial failure reporting</li>
+          <li>Task 001 canonical URL, stable ID, LLM Wiki 저장소 재사용</li>
+          <li><code>TrendItem</code>과 <code>SourceEvidence</code> 저장 통합</li>
+          <li>Task 003/007 handoff 문서와 social signal 정책</li>
+        </ul>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Enabled MVP Sources</h2>
+          <ol>
+            <li><code>anthropic-news</code></li>
+            <li><code>mistral-news</code></li>
+            <li><code>huggingface-blog-feed</code></li>
+            <li><code>github-openai-python-releases</code></li>
+          </ol>
+        </div>
+        <div class="card">
+          <h2>Disabled Backlog</h2>
+          <ul>
+            <li><code>openai-news</code>: server-side fetch HTTP 403</li>
+            <li><code>google-blog-feed</code>: HTML returned instead of RSS</li>
+            <li>DeepMind, Meta AI, Kimi, DeepSeek, Qwen, Spring 후보</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run sources:validate
+
+npm run ingest:run -- \
+  --db=/tmp/ai-trend-agent-task002-live.sqlite \
+  --cache-root=/tmp/ai-trend-agent-task002-live-cache \
+  --date=2026-08-01 \
+  --force-refresh</code></pre>
+      </section>
+
+      <section class="card">
+        <h2>검증 결과</h2>
+        <pre><code>npm run typecheck        passed
+npm test                 passed
+npm run sources:validate passed
+
+11 test files passed
+49 tests passed
+13 configured sources
+4 enabled MVP sources
+
+Live ingestion:
+2026-08-01 failedSourceCount 0 insertedOrUpdatedCount 1
+2026-07-31 failedSourceCount 0 insertedOrUpdatedCount 2
+2026-07-30 failedSourceCount 0 insertedOrUpdatedCount 1</code></pre>
+      </section>
+
+      <section class="card">
+        <h2>Social Signal Policy</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th>Collection method</th>
+                <th>Task</th>
+                <th>Default status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>X/Twitter</td>
+                <td>Official X API, not browser scraping</td>
+                <td>Task 007</td>
+                <td><code>needs_confirmation</code></td>
+              </tr>
+              <tr>
+                <td>Threads</td>
+                <td>Meta Threads API or manual export/import</td>
+                <td>Task 007</td>
+                <td><code>needs_confirmation</code></td>
+              </tr>
+              <tr>
+                <td>Reddit</td>
+                <td>RSS/API</td>
+                <td>Task 007</td>
+                <td><code>needs_confirmation</code></td>
+              </tr>
+              <tr>
+                <td>Hacker News</td>
+                <td>Official Firebase API</td>
+                <td>Task 007</td>
+                <td><code>needs_confirmation</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>완료</h2>
+          <ul>
+            <li>1-13번 단계 완료</li>
+            <li>source config, fetch/cache, parsers, normalization, persistence 구현</li>
+            <li>local validation과 live ingestion validation 통과</li>
+            <li>Karpathy LLM Wiki 참고와 남은 구현 번호표 정리</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>남은 일</h2>
+          <span class="status pending">Step 14 Review</span>
+          <p style="margin-top: 12px">
+            PR #1은 Draft/Open 상태입니다. Task 003은 PR review/merge 순서가 결정된 뒤
+            ranking/synthesis 구현으로 이어가면 됩니다.
+          </p>
+        </div>
+      </section>
+
+      <section class="card links">
+        <h2>관련 문서</h2>
+        <ul>
+          <li><a href="../../task/002_ai_official_source_ingestion/phase_status.md">Task 002 phase_status.md</a></li>
+          <li><a href="../../task/002_ai_official_source_ingestion/validation_report.md">Task 002 validation_report.md</a></li>
+          <li><a href="../../remaining-implementation-plan.md">remaining-implementation-plan.md</a></li>
+          <li><a href="../../social-signal-collection-plan.md">social-signal-collection-plan.md</a></li>
+          <li><a href="../../implementation-sequence-v2.md">implementation-sequence-v2.md</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
