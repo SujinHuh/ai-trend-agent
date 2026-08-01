@@ -181,7 +181,8 @@ function toFetchableSource(source: NormalizedSourceConfig): FetchableSource {
       timeoutMs: source.fetchConfig.timeoutMs,
       retryCount: Math.max(source.retry.maxAttempts - 1, 0),
       backoffMs: source.retry.backoffMs,
-      cacheTtlMinutes: source.fetchConfig.cacheTtlMinutes
+      cacheTtlMinutes: source.fetchConfig.cacheTtlMinutes,
+      ...(source.fetchConfig.headers === undefined ? {} : { headers: source.fetchConfig.headers })
     }
   };
 }

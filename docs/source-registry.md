@@ -40,6 +40,7 @@ interface SourceConfig {
     timeoutMs: number;
     maxItemsPerFetch: number;
     cacheTtlMinutes: number;
+    headers?: Record<string, string>;
   };
   canonicalizationRules?: {
     removeQueryParams: string[];
@@ -97,6 +98,15 @@ HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 00
 
 초기 구현은 3-5개 공식 출처로 제한한다.
 
+2026-08-01 live validation 기준 enabled MVP source:
+
+- `anthropic-news`
+- `mistral-news`
+- `huggingface-blog-feed`
+- `github-openai-python-releases`
+
+OpenAI News는 서버 환경에서 Cloudflare 403이 재현되어 disabled 상태로 둔다. Google Blog Feed는 `https://blog.google/feed/`가 HTML을 반환해 RSS parser가 유효한 feed로 처리할 수 없으므로 disabled 상태로 둔다. 두 source는 이후 별도 feed URL, 허용 가능한 공식 endpoint, 또는 안정적인 fetch 정책이 확인되면 다시 enabled로 전환한다.
+
 ```json
 [
   {
@@ -107,7 +117,7 @@ HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 00
     "category": "llm_vendor",
     "credibility": "official",
     "parserType": "html_list_parser",
-    "enabled": true,
+    "enabled": false,
     "priority": 100,
     "tags": ["openai", "chatgpt", "codex", "api"],
     "fetchConfig": {
@@ -159,7 +169,7 @@ HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 00
     "category": "llm_vendor",
     "credibility": "official",
     "parserType": "rss_parser",
-    "enabled": true,
+    "enabled": false,
     "priority": 90,
     "tags": ["google", "gemini", "ai", "cloud"],
     "fetchConfig": {
@@ -169,55 +179,37 @@ HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 00
     }
   },
   {
-    "id": "google-deepmind-blog",
-    "name": "Google DeepMind Blog",
-    "type": "html",
-    "url": "https://deepmind.google/discover/blog/",
+    "id": "mistral-news",
+    "name": "Mistral News",
+    "type": "rss",
+    "url": "https://mistral.ai/rss.xml",
     "category": "llm_vendor",
     "credibility": "official",
-    "parserType": "html_list_parser",
-    "enabled": false,
-    "priority": 85,
-    "tags": ["google", "deepmind", "gemini", "research", "ai"],
+    "parserType": "rss_parser",
+    "enabled": true,
+    "priority": 84,
+    "tags": ["mistral", "model", "agent", "research"],
     "fetchConfig": {
       "timeoutMs": 5000,
       "maxItemsPerFetch": 10,
       "cacheTtlMinutes": 60
-    },
-    "htmlParserConfig": {
-      "listSelector": "body",
-      "itemSelector": "a[href*='/discover/blog/']",
-      "titleSelector": "self",
-      "urlSelector": "self",
-      "dateSelector": "time",
-      "excerptSelector": "self",
-      "dateFormatHint": "site-specific"
     }
   },
   {
-    "id": "spring-news",
-    "name": "Spring News and Events",
-    "type": "html",
-    "url": "https://spring.io/blog/category/news/",
-    "category": "backend",
+    "id": "huggingface-blog-feed",
+    "name": "Hugging Face Blog Feed",
+    "type": "rss",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "category": "open_source",
     "credibility": "official",
-    "parserType": "html_list_parser",
-    "enabled": false,
-    "priority": 80,
-    "tags": ["spring", "spring-boot", "java", "backend"],
+    "parserType": "rss_parser",
+    "enabled": true,
+    "priority": 82,
+    "tags": ["huggingface", "open-source", "models", "tooling"],
     "fetchConfig": {
       "timeoutMs": 5000,
       "maxItemsPerFetch": 10,
       "cacheTtlMinutes": 60
-    },
-    "htmlParserConfig": {
-      "listSelector": "body",
-      "itemSelector": "a[href*='/blog/']",
-      "titleSelector": "self",
-      "urlSelector": "self",
-      "dateSelector": "self",
-      "excerptSelector": "self",
-      "dateFormatHint": "Month DD, YYYY"
     }
   },
   {

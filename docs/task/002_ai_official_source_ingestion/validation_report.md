@@ -51,16 +51,16 @@ Added:
 Enabled MVP sources:
 
 - `anthropic-news`
-- `openai-news`
-- `google-blog-feed`
+- `mistral-news`
+- `huggingface-blog-feed`
 - `github-openai-python-releases`
 
 Disabled expansion sources:
 
+- `openai-news`
+- `google-blog-feed`
 - `google-deepmind-blog`
-- `mistral-news`
 - `meta-ai-blog`
-- `huggingface-blog-feed`
 - `moonshot-kimi-blog`
 - `kimi-k3-page`
 - `deepseek-api-updates`
@@ -85,7 +85,7 @@ Result:
 
 - Passed.
 - 11 test files passed.
-- 45 tests passed.
+- 49 tests passed.
 
 ```text
 npm run sources:validate
@@ -101,8 +101,8 @@ Enabled source IDs:
 
 ```text
 anthropic-news
-openai-news
-google-blog-feed
+mistral-news
+huggingface-blog-feed
 github-openai-python-releases
 ```
 
@@ -126,6 +126,53 @@ Result:
 - `failedSourceCount`: 0
 - DB path: `/tmp/ai-trend-agent-task002-cli-AFvjjk/wiki.sqlite`
 - Cache path: `/tmp/ai-trend-agent-task002-cli-AFvjjk/cache/2026-08-01/fixture-feed.json`
+
+Manual live ingestion validation:
+
+```text
+npm run ingest:run -- \
+  --db=/tmp/ai-trend-agent-task002-live.sqlite \
+  --cache-root=/tmp/ai-trend-agent-task002-live-cache \
+  --date=2026-08-01 \
+  --force-refresh
+```
+
+Result:
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 1
+- Included source evidence from `github-openai-python-releases`.
+
+```text
+npm run ingest:run -- \
+  --db=/tmp/ai-trend-agent-task002-live-0731.sqlite \
+  --cache-root=/tmp/ai-trend-agent-task002-live-cache-0731 \
+  --date=2026-07-31 \
+  --force-refresh
+```
+
+Result:
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 2
+- Included source evidence from `huggingface-blog-feed` and `github-openai-python-releases`.
+
+```text
+npm run ingest:run -- \
+  --db=/tmp/ai-trend-agent-task002-live-0730.sqlite \
+  --cache-root=/tmp/ai-trend-agent-task002-live-cache-0730 \
+  --date=2026-07-30 \
+  --force-refresh
+```
+
+Result:
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 1
+- Included source evidence from `anthropic-news`.
 
 ## Coverage
 
@@ -156,6 +203,9 @@ Covered behavior:
 - HTML list parsing
 - HTML selector failure
 - configured HTML attribute selectors used by enabled sources
+- embedded card date extraction for Anthropic-style pages
+- RSS/Atom non-feed HTML failure detection
+- valid empty RSS/Atom feed handling
 - KST report-window filtering
 - `maxItemsPerFetch` enforcement
 - missing-date review behavior
@@ -174,6 +224,7 @@ Covered behavior:
 - live-source validation depends on network access and source layout stability.
 - HTML selectors for OpenAI, Anthropic, and expansion sources can drift, though configured attribute selectors are now covered.
 - broad AI coverage sources are documented as disabled expansion tiers; only 4 MVP sources are enabled.
+- OpenAI News and Google Blog Feed are disabled until live fetch/feed behavior is reliable from the server environment.
 - social/community sources remain `needs confirmation` candidates and are not enabled in Task 002.
 
 ## Review Fixes
@@ -184,6 +235,12 @@ Sub-agent review findings addressed:
 - `maxItemsPerFetch` is enforced before normalization and persistence.
 - non-2xx HTTP responses are returned as failures without being cached as fresh snapshots.
 - existing non-2xx cache snapshots are ignored instead of suppressing refetch.
+- OpenAI News is disabled because live server fetch returned HTTP 403.
+- Google Blog Feed is disabled because the configured URL returned HTML instead of RSS.
+- Mistral and Hugging Face RSS feeds are enabled after live endpoint validation.
+- Anthropic card date extraction is covered for embedded date text.
+- RSS/Atom parser now fails non-feed HTML instead of silently returning zero items.
+- Valid RSS/Atom feed documents with zero current entries remain successful zero-item parse results.
 
 ## PR
 

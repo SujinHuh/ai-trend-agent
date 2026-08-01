@@ -13,6 +13,17 @@ export function parseRssAtomFeed(feedXml: string, context: SourceParserContext):
   const entries = extractBlocks(feedXml, "entry");
   const rssItems = entries.length > 0 ? [] : extractBlocks(feedXml, "item");
   const blocks = entries.length > 0 ? entries : rssItems;
+  if (blocks.length === 0) {
+    if (looksLikeFeedDocument(feedXml)) {
+      return {
+        items: [],
+        skippedItems: []
+      };
+    }
+
+    throw new Error("RSS/Atom parser found no entry or item blocks");
+  }
+
   const items: ParsedSourceItem[] = [];
   const skippedItems: ParseSkippedItem[] = [];
 
@@ -66,6 +77,10 @@ export function parseRssAtomFeed(feedXml: string, context: SourceParserContext):
     items: dedupeByCanonicalUrl(items),
     skippedItems
   };
+}
+
+function looksLikeFeedDocument(xml: string): boolean {
+  return /<(?:rss|feed|channel)\b/iu.test(xml);
 }
 
 function extractBlocks(xml: string, tagName: string): string[] {

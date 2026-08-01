@@ -14,12 +14,14 @@
 
 - Task 002 `AI 공식 출처 수집` 문서, 단계별 하위 계획서, 진행 상태표, 검증 리포트를 추가했습니다.
 - Source Registry 설정 파일과 로딩/검증 로직을 추가했습니다.
-- OpenAI, Anthropic, Google Blog Feed, OpenAI Python GitHub Releases를 enabled MVP source로 설정했습니다.
-- DeepMind, Mistral, Meta AI, Hugging Face, Kimi, DeepSeek, Qwen 등은 disabled expansion source로 기록했습니다.
+- Anthropic, Mistral RSS, Hugging Face RSS, OpenAI Python GitHub Releases를 enabled MVP source로 설정했습니다.
+- OpenAI News와 Google Blog Feed는 live fetch/feed 검증 결과에 따라 disabled backlog로 유지했습니다.
+- DeepMind, Meta AI, Kimi, DeepSeek, Qwen 등은 disabled expansion source로 기록했습니다.
 - fetch/cache, RSS/Atom parser, GitHub Releases parser, HTML list parser를 추가했습니다.
 - KST report window 기반 정규화와 검증, LLM Wiki `TrendItem`/`SourceEvidence` 저장 통합을 추가했습니다.
 - `sources:validate`, `ingest:run` CLI를 추가했습니다.
 - 서브 에이전트 리뷰에서 발견된 HTML selector, `maxItemsPerFetch`, non-2xx cache 처리 문제를 수정했습니다.
+- live ingestion 안정화를 위해 Anthropic 날짜 추출, RSS non-feed 실패 처리, valid empty feed 처리, enabled source 구성을 보완했습니다.
 
 ## ❓ 변경 이유
 
@@ -49,7 +51,7 @@ npm test
 
 - Passed.
 - 11 test files passed.
-- 45 tests passed.
+- 49 tests passed.
 
 ```text
 npm run sources:validate
@@ -74,13 +76,40 @@ npm run ingest:run -- \
 - `failedSourceCount`: 0
 - `cacheHit`: true
 
+수동 live ingestion 검증:
+
+```text
+npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live.sqlite --cache-root=/tmp/ai-trend-agent-task002-live-cache --date=2026-08-01 --force-refresh
+```
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 1
+
+```text
+npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live-0731.sqlite --cache-root=/tmp/ai-trend-agent-task002-live-cache-0731 --date=2026-07-31 --force-refresh
+```
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 2
+
+```text
+npm run ingest:run -- --db=/tmp/ai-trend-agent-task002-live-0730.sqlite --cache-root=/tmp/ai-trend-agent-task002-live-cache-0730 --date=2026-07-30 --force-refresh
+```
+
+- Passed.
+- `failedSourceCount`: 0
+- `insertedOrUpdatedCount`: 1
+
 ## 🔗 연관 이슈
 
 <!-- 관련된 이슈 번호를 입력해주세요. (예: Closes #123) -->
 
 ## 💡 추가 설명
 
-- 실제 live-source 검증은 네트워크 접근과 각 사이트의 HTML layout 안정성에 영향을 받으므로, 이번 PR에서는 fixture/cached ingestion 중심으로 검증했습니다.
+- OpenAI News는 현재 서버 환경에서 HTTP 403이 재현되어 disabled 상태입니다.
+- Google Blog Feed는 설정 URL이 RSS가 아닌 HTML을 반환해 disabled 상태입니다.
 - Task 002는 수집/저장까지만 포함합니다. LLM 요약, 랭킹, Slack 발송, Hermes `/cron`, GCP 배포, 웹 UI는 포함하지 않습니다.
 - 현재 브랜치는 Task 001 PR이 아직 merge되지 않아 `feature/001-llm-wiki-local-store` 기반으로 시작했습니다.
 

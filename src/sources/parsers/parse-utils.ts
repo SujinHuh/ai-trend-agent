@@ -30,6 +30,40 @@ export function parseDateValue(rawDate: string | null): string | null {
     return null;
   }
 
+  const normalized = decodeEntities(rawDate.trim());
+  const timestamp = Date.parse(normalized);
+  if (!Number.isNaN(timestamp)) {
+    return new Date(timestamp).toISOString();
+  }
+
+  const extractedDate = extractDateCandidate(normalized);
+  if (extractedDate === null) {
+    return null;
+  }
+
+  const extractedTimestamp = Date.parse(extractedDate);
+  return Number.isNaN(extractedTimestamp) ? null : new Date(extractedTimestamp).toISOString();
+}
+
+function extractDateCandidate(value: string): string | null {
+  const monthDate = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},\s+20\d{2}\b/iu.exec(value);
+  if (monthDate?.[0] !== undefined) {
+    return monthDate[0].replace(/\bSept\b/iu, "Sep");
+  }
+
+  const isoDate = /\b20\d{2}-\d{2}-\d{2}\b/u.exec(value);
+  if (isoDate?.[0] !== undefined) {
+    return isoDate[0];
+  }
+
+  return null;
+}
+
+export function parseStrictDateValue(rawDate: string | null): string | null {
+  if (rawDate === null || rawDate.trim().length === 0) {
+    return null;
+  }
+
   const timestamp = Date.parse(decodeEntities(rawDate.trim()));
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
 }

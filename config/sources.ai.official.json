@@ -7,7 +7,7 @@
     "category": "llm_vendor",
     "credibility": "official",
     "parserType": "html_list_parser",
-    "enabled": true,
+    "enabled": false,
     "priority": 100,
     "tags": ["openai", "chatgpt", "codex", "api"],
     "fetchConfig": {
@@ -59,7 +59,7 @@
     "category": "llm_vendor",
     "credibility": "official",
     "parserType": "rss_parser",
-    "enabled": true,
+    "enabled": false,
     "priority": 90,
     "tags": ["google", "gemini", "ai", "cloud"],
     "fetchConfig": {
@@ -114,27 +114,18 @@
   {
     "id": "mistral-news",
     "name": "Mistral News",
-    "type": "html",
-    "url": "https://mistral.ai/news/",
+    "type": "rss",
+    "url": "https://mistral.ai/rss.xml",
     "category": "llm_vendor",
     "credibility": "official",
-    "parserType": "html_list_parser",
-    "enabled": false,
+    "parserType": "rss_parser",
+    "enabled": true,
     "priority": 84,
     "tags": ["mistral", "model", "agent", "research"],
     "fetchConfig": {
       "timeoutMs": 5000,
       "maxItemsPerFetch": 10,
       "cacheTtlMinutes": 60
-    },
-    "htmlParserConfig": {
-      "listSelector": "body",
-      "itemSelector": "a[href*='/news/']",
-      "titleSelector": "self",
-      "urlSelector": "self",
-      "dateSelector": "time",
-      "excerptSelector": "self",
-      "dateFormatHint": "site-specific"
     }
   },
   {
@@ -171,7 +162,7 @@
     "category": "open_source",
     "credibility": "official",
     "parserType": "rss_parser",
-    "enabled": false,
+    "enabled": true,
     "priority": 82,
     "tags": ["huggingface", "open-source", "models", "tooling"],
     "fetchConfig": {

@@ -17,15 +17,15 @@ describe("source registry config", () => {
 
     expect(sources.map((source) => source.id)).toEqual([
       "anthropic-news",
-      "openai-news",
-      "google-blog-feed",
+      "mistral-news",
+      "huggingface-blog-feed",
       "github-openai-python-releases"
     ]);
     expect(sources.every((source) => source.enabled)).toBe(true);
     expect(sources.every((source) => source.credibility === "official")).toBe(true);
 
-    const openAiNews = sources.find((source) => source.id === "openai-news");
-    expect(openAiNews).toMatchObject({
+    const anthropicNews = sources.find((source) => source.id === "anthropic-news");
+    expect(anthropicNews).toMatchObject({
       official: true,
       timezone: "UTC",
       rateLimit: SOURCE_CONFIG_DEFAULTS.rateLimit,
@@ -47,6 +47,8 @@ describe("source registry config", () => {
     expect(sourceIds).toContain("qwen-blog");
     expect(sourceIds).toContain("spring-news");
     expect(loadSourceConfigs().map((source) => source.id)).not.toContain("spring-news");
+    expect(loadSourceConfigs().map((source) => source.id)).not.toContain("openai-news");
+    expect(loadSourceConfigs().map((source) => source.id)).not.toContain("google-blog-feed");
   });
 
   it("derives parser dispatch from source type when parserType is omitted", () => {
@@ -132,5 +134,33 @@ describe("source registry config", () => {
 
     expect(loadSourceConfigs(configPath)).toHaveLength(1);
     expect(loadSourceConfigs(configPath)[0]?.parserType).toBe("atom_parser");
+  });
+
+  it("accepts optional fetch headers for sources that need them", () => {
+    const [source] = normalizeSourceConfigs([
+      {
+        id: "header-source",
+        name: "Header Source",
+        type: "rss",
+        url: "https://example.com/feed.xml",
+        category: "llm_vendor",
+        credibility: "official",
+        enabled: true,
+        priority: 1,
+        tags: ["example"],
+        fetchConfig: {
+          timeoutMs: 5000,
+          maxItemsPerFetch: 10,
+          cacheTtlMinutes: 60,
+          headers: {
+            "user-agent": "AITrendAgent/0.1"
+          }
+        }
+      }
+    ]);
+
+    expect(source?.fetchConfig.headers).toEqual({
+      "user-agent": "AITrendAgent/0.1"
+    });
   });
 });

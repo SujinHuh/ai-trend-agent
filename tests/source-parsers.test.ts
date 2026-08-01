@@ -39,6 +39,29 @@ describe("parseRssAtomFeed", () => {
     expect(result.items[1]?.effectivePublishedAt).toBe("2026-07-30T12:00:00.000Z");
     expect(result.items[1]?.excerpt).toBe("Research updates with multi-step assistance.");
   });
+
+  it("fails when an RSS/Atom source returns non-feed HTML", () => {
+    expect(() =>
+      parseRssAtomFeed("<html><body>not a feed</body></html>", {
+        sourceId: "google-blog-feed",
+        sourceName: "Google Blog Feed",
+        sourceUrl: "https://blog.google/feed/"
+      })
+    ).toThrow("RSS/Atom parser found no entry or item blocks");
+  });
+
+  it("allows valid feed documents with no current entries", () => {
+    const result = parseRssAtomFeed("<rss><channel><title>Empty feed</title></channel></rss>", {
+      sourceId: "empty-feed",
+      sourceName: "Empty Feed",
+      sourceUrl: "https://example.com/feed.xml"
+    });
+
+    expect(result).toEqual({
+      items: [],
+      skippedItems: []
+    });
+  });
 });
 
 describe("parseGitHubReleasesAtom", () => {
@@ -194,6 +217,28 @@ describe("parseHtmlList", () => {
     expect(result.items[0]).toMatchObject({
       title: "Product launch",
       url: "https://openai.com/news/product-launch"
+    });
+  });
+
+  it("extracts date text embedded in a selected card", () => {
+    const result = parseHtmlList(
+      '<main><a href="/news/model-update"><span>Model update</span><span>Jul 30, 2026</span></a></main>',
+      {
+        itemSelector: "a[href*='/news/']",
+        titleSelector: "self",
+        urlSelector: "self",
+        dateSelector: "self"
+      },
+      {
+        sourceId: "anthropic-news",
+        sourceName: "Anthropic News",
+        sourceUrl: "https://www.anthropic.com/news"
+      }
+    );
+
+    expect(result.items[0]).toMatchObject({
+      publishedAt: "2026-07-30T00:00:00.000Z",
+      effectivePublishedAt: "2026-07-30T00:00:00.000Z"
     });
   });
 });

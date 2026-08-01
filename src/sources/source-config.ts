@@ -19,6 +19,7 @@ export interface FetchConfig {
   timeoutMs: number;
   maxItemsPerFetch: number;
   cacheTtlMinutes: number;
+  headers?: Record<string, string>;
 }
 
 export interface CanonicalizationRules {
@@ -271,8 +272,34 @@ function readFetchConfig(value: unknown, path: string): FetchConfig {
   return {
     timeoutMs: readRequiredPositiveNumber(value, "timeoutMs", path),
     maxItemsPerFetch: readRequiredPositiveNumber(value, "maxItemsPerFetch", path),
-    cacheTtlMinutes: readRequiredPositiveNumber(value, "cacheTtlMinutes", path)
+    cacheTtlMinutes: readRequiredPositiveNumber(value, "cacheTtlMinutes", path),
+    ...readOptionalHeaders(value, "headers", path)
   };
+}
+
+function readOptionalHeaders(
+  record: Record<string, unknown>,
+  key: string,
+  path: string
+): { headers?: Record<string, string> } {
+  const value = record[key];
+  if (value === undefined) {
+    return {};
+  }
+  if (!isRecord(value)) {
+    throw new Error(`${path}.${key}: expected object`);
+  }
+
+  const headers: Record<string, string> = {};
+  for (const [headerName, headerValue] of Object.entries(value)) {
+    if (typeof headerValue !== "string" || headerValue.trim().length === 0) {
+      throw new Error(`${path}.${key}.${headerName}: expected non-empty string`);
+    }
+
+    headers[headerName] = headerValue;
+  }
+
+  return { headers };
 }
 
 function readOptionalRateLimit(value: unknown, path: string): RateLimitConfig | undefined {
