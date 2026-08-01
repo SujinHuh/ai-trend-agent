@@ -38,7 +38,7 @@ Status 값:
 | 11 | ingestion CLI 구현 | Done | `sources:validate` and `ingest:run` work with date, DB path, cache root, and force-refresh options. |
 | 12 | 테스트 작성 | Done | Parser, cache, failure, window, dedupe, persistence, and CLI invariants covered; 11 files / 49 tests passed. |
 | 13 | 검증 리포트 작성 | Done | Commands, item counts, failed sources, DB path, cache path, and risks recorded. |
-| 14 | PR 만들기 | Review | Draft PR created: https://github.com/SujinHuh/ai-trend-agent/pull/1 |
+| 14 | PR 만들기 | Review | PR #1 is ready for review: https://github.com/SujinHuh/ai-trend-agent/pull/1 |
 
 ## Logging Rule
 

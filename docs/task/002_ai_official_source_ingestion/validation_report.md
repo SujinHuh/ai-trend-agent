@@ -249,7 +249,7 @@ Sub-agent review findings addressed:
 
 ## PR
 
-Draft PR:
+Ready PR:
 
 ```text
 https://github.com/SujinHuh/ai-trend-agent/pull/1
