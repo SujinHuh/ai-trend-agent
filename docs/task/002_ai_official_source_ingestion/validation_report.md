@@ -22,7 +22,7 @@ Done:
 
 Remaining:
 
-- Step 14 PR creation/review
+- Step 14 PR review/merge
 
 ## Planning Validation
 
@@ -184,3 +184,23 @@ Sub-agent review findings addressed:
 - `maxItemsPerFetch` is enforced before normalization and persistence.
 - non-2xx HTTP responses are returned as failures without being cached as fresh snapshots.
 - existing non-2xx cache snapshots are ignored instead of suppressing refetch.
+
+## PR
+
+Draft PR:
+
+```text
+https://github.com/SujinHuh/ai-trend-agent/pull/1
+```
+
+Base branch:
+
+```text
+feature/001-llm-wiki-local-store
+```
+
+Head branch:
+
+```text
+feature/002-ai-official-source-ingestion
+```
