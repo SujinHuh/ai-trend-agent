@@ -11,6 +11,12 @@ v2의 목표는 Rocket Brief 같은 뉴스 화면을 바로 만드는 것이 아
 Reference:
 
 - Rocket Brief news 화면: https://rocket-brief.vercel.app/news
+- Karpathy LLM Wiki 원문 참고: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+- 프로젝트 적용 메모: [docs/llm-wiki-karpathy-reference.md](llm-wiki-karpathy-reference.md)
+- 빠른 AI 개인/소셜 신호 watch-list: [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
+- LLM Wiki 보강 gap 분석: [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)
+- 남은 구현 번호표: [docs/remaining-implementation-plan.md](remaining-implementation-plan.md)
+- social signal 수집 방식: [docs/social-signal-collection-plan.md](social-signal-collection-plan.md)
 
 ## 2. 전체 구현 순서
 
@@ -33,6 +39,7 @@ Reference:
 상세 실행 순서:
 
 - [docs/task/001_llm_wiki_local_store/implementation-sequence.md](task/001_llm_wiki_local_store/implementation-sequence.md)
+- [docs/llm-wiki-karpathy-reference.md](llm-wiki-karpathy-reference.md)를 운영 원칙으로 참고한다.
 
 ### 2. AI 공식 출처 수집
 
@@ -50,10 +57,21 @@ Reference:
 
 초기 출처 후보:
 
-- OpenAI News
 - Anthropic News
-- Google Blog Feed
+- Mistral RSS
+- Hugging Face Blog Feed
 - OpenAI Python GitHub Releases
+
+OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인 server-side ingestion source로 확인되지 않아 disabled backlog로 둔다.
+
+상세 실행 순서:
+
+- [docs/task/002_ai_official_source_ingestion/implementation-sequence.md](task/002_ai_official_source_ingestion/implementation-sequence.md)
+- [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)를 참고해 Task 002 hotfix와 Task 003 구현 범위를 분리한다.
+
+진행 상태:
+
+- [docs/task/002_ai_official_source_ingestion/phase_status.md](task/002_ai_official_source_ingestion/phase_status.md)
 
 ### 3. TrendItem 생성과 랭킹
 
@@ -66,9 +84,18 @@ Reference:
 - 요약
 - `whyItMatters`
 - `practicalImpact`
+- `trendCategory`
+- `actionLevel`
 - confidence score
 - importance score
+- source lineage
+- confirmation status
+- staleness policy
 - urgent candidate 분리
+
+상세 실행 순서:
+
+- [docs/task/003_trenditem_ranking/implementation-sequence.md](task/003_trenditem_ranking/implementation-sequence.md)
 
 ### 4. Slack 수동 발송
 
@@ -126,6 +153,11 @@ Reference:
 - Reddit, Hacker News 키워드 수집
 - 낮은 신뢰도 정책
 - 공식 출처와 교차 확인 규칙
+
+참고:
+
+- [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
+- [docs/task/007_social_allow_list/implementation-sequence.md](task/007_social_allow_list/implementation-sequence.md)
 
 ### 8. Backend, Frontend, DevOps 도메인 확장
 
@@ -242,4 +274,27 @@ Task 001 GCP nginx 공개 URL:
 
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.html
+```
+
+Task 002 완료 확인 산출물:
+
+- [docs/showcase/002_ai_official_source_ingestion/completion.md](showcase/002_ai_official_source_ingestion/completion.md)
+- [docs/showcase/002_ai_official_source_ingestion/completion.html](showcase/002_ai_official_source_ingestion/completion.html)
+
+Task 002 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+Task 002 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+Task 002 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
 ```

@@ -35,4 +35,5 @@ const server = createServer((request, response) => {
 server.listen(port, host, () => {
   console.log(`Docs server running at http://${host}:${port}/showcase/001_llm_wiki_local_store/completion.html`);
   console.log(`Browser URL: http://127.0.0.1:${port}/showcase/001_llm_wiki_local_store/completion.html`);
+  console.log(`Task 002 URL: http://127.0.0.1:${port}/showcase/002_ai_official_source_ingestion/completion.html`);
 });

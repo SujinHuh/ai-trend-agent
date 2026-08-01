@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Release notes from openai-python</title>
+  <entry>
+    <id>tag:github.com,2008:Repository/123456/v2.0.0</id>
+    <title>v2.0.0</title>
+    <link rel="alternate" type="text/html" href="https://github.com/openai/openai-python/releases/tag/v2.0.0" />
+    <updated>2026-07-29T17:30:00Z</updated>
+    <author><name>openai-dev</name></author>
+    <summary type="html">Major client update with API ergonomics improvements.</summary>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/123456/v2.0.0-duplicate</id>
+    <title>v2.0.0 duplicate feed item</title>
+    <link rel="alternate" type="text/html" href="http://github.com/openai/openai-python/releases/tag/v2.0.0?utm_source=atom#release" />
+    <updated>2026-07-29T18:00:00Z</updated>
+    <summary type="html">Duplicate link variant should be removed by canonical URL.</summary>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/123456/v1.99.0</id>
+    <title>v1.99.0</title>
+    <link rel="alternate" type="text/html" href="https://github.com/openai/openai-python/releases/tag/v1.99.0" />
+    <updated>2026-07-20T10:00:00Z</updated>
+    <summary type="html">Previous release notes.</summary>
+  </entry>
+</feed>

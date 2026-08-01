@@ -10,10 +10,15 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 2. [Requirements v2 - LLM Wiki and Hermes](requirements-v2-llm-wiki-hermes.md)
 3. [Development Plan v2 - LLM Wiki, Hermes, Slack](development-plan-v2-llm-wiki-hermes.md)
 4. [Acceptance Criteria](acceptance-criteria.md)
+5. [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
+6. [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
+7. [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
+8. [Remaining Implementation Plan](remaining-implementation-plan.md)
+9. [Social Signal Collection Plan](social-signal-collection-plan.md)
 
 ## 현재 작업
 
-현재 작업은 `001_llm_wiki_local_store`다.
+현재 작업은 `001_llm_wiki_local_store` PR 생성/리뷰 이후 `002_ai_official_source_ingestion`로 넘어간다.
 
 작업 문서:
 
@@ -23,15 +28,36 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 - [Task 001 Phase Status](task/001_llm_wiki_local_store/phase_status.md)
 - [Task 001 Validation Report](task/001_llm_wiki_local_store/validation_report.md)
 
+다음 작업 문서:
+
+- [Task 002 Requirements](task/002_ai_official_source_ingestion/requirements.md)
+- [Task 002 Plan](task/002_ai_official_source_ingestion/plan.md)
+- [Task 002 Implementation Sequence](task/002_ai_official_source_ingestion/implementation-sequence.md)
+- [Task 002 Phase Status](task/002_ai_official_source_ingestion/phase_status.md)
+- [Task 002 Validation Report](task/002_ai_official_source_ingestion/validation_report.md)
+- [Task 002 Step Plans](task/002_ai_official_source_ingestion/steps/README.md)
+
+후속 작업 문서:
+
+- [Task 003 Requirements](task/003_trenditem_ranking/requirements.md)
+- [Task 003 Implementation Sequence](task/003_trenditem_ranking/implementation-sequence.md)
+- [Task 003 Phase Status](task/003_trenditem_ranking/phase_status.md)
+- [Task 007 Requirements](task/007_social_allow_list/requirements.md)
+- [Task 007 Implementation Sequence](task/007_social_allow_list/implementation-sequence.md)
+- [Task 007 Phase Status](task/007_social_allow_list/phase_status.md)
+
 완료 확인 산출물:
 
 - [Task 001 Completion Markdown](showcase/001_llm_wiki_local_store/completion.md)
 - [Task 001 Completion HTML](showcase/001_llm_wiki_local_store/completion.html)
+- [Task 002 Completion Markdown](showcase/002_ai_official_source_ingestion/completion.md)
+- [Task 002 Completion HTML](showcase/002_ai_official_source_ingestion/completion.html)
 
 외부 확인 URL:
 
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.html
+http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
 ```
 
 ## 작업 흐름 문서
@@ -45,6 +71,11 @@ http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.
 ## 보조 참고 문서
 
 - [Source Registry](source-registry.md)
+- [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
+- [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
+- [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
+- [Remaining Implementation Plan](remaining-implementation-plan.md)
+- [Social Signal Collection Plan](social-signal-collection-plan.md)
 - [Data Schema](data-schema.md)
 - [Operations](operations.md)
 - [Architecture Reference](architecture.md)
@@ -52,6 +83,8 @@ http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.
 ## 보관 문서
 
 아래 문서는 현재 구현 기준이 아니라 과거 v1 또는 초안 참고 문서다.
+
+`docs/implementation-sequence-v1.md`는 현재 없다. v1 구현 흐름은 아래 archive 문서들을 참고하되, 현재 실행 기준은 v2 문서와 task별 implementation sequence다.
 
 - [Legacy Requirements](archive/v1/requirements.md)
 - [Legacy Development Plan](archive/v1/development-plan.md)

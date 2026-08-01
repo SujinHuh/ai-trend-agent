@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Google Blog - AI</title>
+  <entry>
+    <id>tag:blog.google,2026:gemini-cli</id>
+    <title>Gemini CLI adds agentic coding workflows</title>
+    <link href="/technology/ai/gemini-cli-agentic-coding/?utm_source=feed" rel="alternate" />
+    <published>2026-07-30T15:00:00Z</published>
+    <updated>2026-07-30T16:15:00Z</updated>
+    <author><name>Google AI</name></author>
+    <summary>New command line workflows for developers building with Gemini.</summary>
+  </entry>
+  <entry>
+    <id>tag:blog.google,2026:research-update</id>
+    <title>AI Mode expands research capabilities</title>
+    <link href="https://blog.google/products/search/ai-mode-research/" rel="alternate" />
+    <updated>Thu, 30 Jul 2026 12:00:00 GMT</updated>
+    <author><name>Search Team</name></author>
+    <summary><![CDATA[Research updates with <strong>multi-step</strong> assistance.]]></summary>
+  </entry>
+  <entry>
+    <id>tag:blog.google,2026:malformed</id>
+    <title>Malformed entry without a link</title>
+    <updated>2026-07-30T12:00:00Z</updated>
+  </entry>
+</feed>
