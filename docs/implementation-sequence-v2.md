@@ -11,6 +11,10 @@ v2의 목표는 Rocket Brief 같은 뉴스 화면을 바로 만드는 것이 아
 Reference:
 
 - Rocket Brief news 화면: https://rocket-brief.vercel.app/news
+- Karpathy LLM Wiki 원문 참고: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+- 프로젝트 적용 메모: [docs/llm-wiki-karpathy-reference.md](llm-wiki-karpathy-reference.md)
+- 빠른 AI 개인/소셜 신호 watch-list: [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
+- LLM Wiki 보강 gap 분석: [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)
 
 ## 2. 전체 구현 순서
 
@@ -33,6 +37,7 @@ Reference:
 상세 실행 순서:
 
 - [docs/task/001_llm_wiki_local_store/implementation-sequence.md](task/001_llm_wiki_local_store/implementation-sequence.md)
+- [docs/llm-wiki-karpathy-reference.md](llm-wiki-karpathy-reference.md)를 운영 원칙으로 참고한다.
 
 ### 2. AI 공식 출처 수집
 
@@ -50,14 +55,17 @@ Reference:
 
 초기 출처 후보:
 
-- OpenAI News
 - Anthropic News
-- Google Blog Feed
+- Mistral RSS
+- Hugging Face Blog Feed
 - OpenAI Python GitHub Releases
+
+OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인 server-side ingestion source로 확인되지 않아 disabled backlog로 둔다.
 
 상세 실행 순서:
 
 - [docs/task/002_ai_official_source_ingestion/implementation-sequence.md](task/002_ai_official_source_ingestion/implementation-sequence.md)
+- [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)를 참고해 Task 002 hotfix와 Task 003 구현 범위를 분리한다.
 
 진행 상태:
 
@@ -134,6 +142,10 @@ Reference:
 - Reddit, Hacker News 키워드 수집
 - 낮은 신뢰도 정책
 - 공식 출처와 교차 확인 규칙
+
+참고:
+
+- [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
 
 ### 8. Backend, Frontend, DevOps 도메인 확장
 

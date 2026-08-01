@@ -17,6 +17,8 @@ Practical implications:
 - fast-moving model labs such as Moonshot AI Kimi, DeepSeek, Qwen, Zhipu, Mistral, xAI, Meta, Hugging Face, and open-source model ecosystems should be visible in the backlog.
 - lower-trust social/community signals should be marked as "needs confirmation", not treated as facts.
 - when a new model appears, the workflow should preserve the source link, date, model name, and why a solo developer should care.
+- Karpathy LLM Wiki 원문은 raw source, wiki synthesis layer, schema, ingest/query/lint 운영 원칙의 참고 자료로 쓴다: `docs/llm-wiki-karpathy-reference.md`.
+- influential AI people and social signals are tracked through `docs/trusted-ai-signal-watchlist.md`, but they remain `needs_confirmation` unless confirmed by official sources.
 
 ## 2. Scope
 
@@ -52,18 +54,23 @@ Task 002 starts with a small official-source set so parser behavior and persiste
 
 Required enabled sources:
 
-1. OpenAI News
-2. Anthropic News
-3. Google AI Blog or Google Blog Feed
+1. Anthropic News
+2. Mistral RSS
+3. Hugging Face Blog Feed
 4. OpenAI Python GitHub Releases
 
-Optional enabled source if the parser remains stable:
+Disabled after 2026-08-01 live validation:
 
-5. Google DeepMind Blog
+1. OpenAI News: server-side fetch returned HTTP 403.
+2. Google Blog Feed: configured feed URL returned HTML instead of RSS.
+
+Optional source if the parser remains stable:
+
+1. Google DeepMind Blog
 
 Optional disabled source for later domain expansion:
 
-6. Spring News and Events
+1. Spring News and Events
 
 ## 4. Source Candidate Backlog
 
@@ -167,6 +174,10 @@ Community and social allow-list candidates for later tasks:
 18. Hugging Face maintainers
 19. LangChain and LlamaIndex maintainers
 20. AI engineering newsletter authors
+
+Detailed trusted individual/social candidate policy:
+
+- [Trusted AI Signal Watchlist](../../trusted-ai-signal-watchlist.md)
 
 ## 5. Source Trust Policy
 

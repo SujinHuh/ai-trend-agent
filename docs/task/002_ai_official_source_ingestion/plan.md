@@ -12,6 +12,7 @@
 8. Add ingestion CLI.
 9. Add tests.
 10. Run validation and update docs.
+11. Keep Karpathy LLM Wiki operating principles and trusted social-signal policy linked for Task 003.
 
 ## 1.1 Feedback Plan for a Solo Developer
 
@@ -23,6 +24,11 @@ When reporting progress or reviewing sources, Codex should use this structure:
 4. Risk: what could be noisy, stale, unofficial, or expensive.
 
 This keeps the work navigable for one developer while still preserving broad trend coverage.
+
+Reference docs:
+
+- [LLM Wiki Karpathy Reference](../../llm-wiki-karpathy-reference.md)
+- [Trusted AI Signal Watchlist](../../trusted-ai-signal-watchlist.md)
 
 ## 2. Technical Shape
 
@@ -90,3 +96,4 @@ If network access is unavailable, live ingestion can be deferred, but fixture-ba
 - social sources are high-volume and lower-trust, so they should not be mixed into the official-source MVP.
 - Task 002 depends on Task 001 store and identity contracts.
 - The source universe is larger than OpenAI, Anthropic, and Google; non-US labs and open-weight model ecosystems can move quickly and need watch-list coverage.
+- influential individual signals can be useful for speed, but must stay `needs_confirmation` until official or source-of-record evidence exists.

@@ -6,6 +6,8 @@ Source Registry는 AI Trend Agent가 수집할 출처를 코드가 아닌 설정
 
 Task 002에서는 공식 출처 중심으로만 시작한다. X/Twitter, Threads, YouTube, 비공식 커뮤니티는 이후 작업에서 allow-list 기반으로 추가한다.
 
+LLM Wiki 운영 원칙은 [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)를 참고한다. 빠른 개인/소셜 신호 후보는 [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)에 따로 기록한다.
+
 ## 2. Source 스키마
 
 ```ts
@@ -250,7 +252,19 @@ interface SourceResult {
 
 리포트에는 성공한 출처의 항목을 포함하고, 실패한 출처는 하단의 `Source Failures` 섹션에 기록한다.
 
-## 5. 로컬 캐시
+## 5. Trusted Individual / Social Source Policy
+
+`credibility: "trusted_individual"`과 `credibility: "community"`는 공식 source와 같은 방식으로 digest에 포함하지 않는다.
+
+운영 규칙:
+
+- Task 002에서는 enabled source로 사용하지 않는다.
+- Task 003 ranking에서는 보조 신호로만 사용한다.
+- 공식 출처 없이 개인/소셜 신호만 있는 item은 `needs_confirmation`으로 둔다.
+- 같은 주제가 official source와 연결되면 confidence를 올릴 수 있다.
+- allow-list 후보와 검증 기준은 [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)를 따른다.
+
+## 6. 로컬 캐시
 
 Task 002는 개발 중 반복 실행 비용을 줄이기 위해 원문 캐시를 지원한다.
 

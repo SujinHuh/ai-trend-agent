@@ -34,6 +34,7 @@ Validated:
 - status flow matches Task 001: `Pending`, `In Progress`, `Review`, `Needs Fix`, `Done`.
 - solo-developer feedback guidance is documented.
 - broad AI trend coverage is documented through enabled MVP sources and expansion tiers.
+- Karpathy LLM Wiki reference, trusted AI signal watch-list, and hotfix gap analysis are documented for Task 003 handoff.
 
 ## Implementation Summary
 
@@ -47,6 +48,9 @@ Added:
 - `src/sources/ingest-sources.ts`
 - `npm run sources:validate`
 - `npm run ingest:run`
+- `docs/llm-wiki-karpathy-reference.md`
+- `docs/trusted-ai-signal-watchlist.md`
+- `docs/llm-wiki-hotfix-gap-analysis.md`
 
 Enabled MVP sources:
 
@@ -226,6 +230,7 @@ Covered behavior:
 - broad AI coverage sources are documented as disabled expansion tiers; only 4 MVP sources are enabled.
 - OpenAI News and Google Blog Feed are disabled until live fetch/feed behavior is reliable from the server environment.
 - social/community sources remain `needs confirmation` candidates and are not enabled in Task 002.
+- Karpathy-style wiki synthesis, query filing, linting, and trusted individual collectors are intentionally deferred to Task 003, Task 007, or later lint work.
 
 ## Review Fixes
 

@@ -12,10 +12,17 @@ These sources should be enabled first.
 
 | Source ID | Source | URL | Type | Parser | Priority | Why |
 | --- | --- | --- | --- | --- | --- | --- |
-| `openai-news` | OpenAI News | `https://openai.com/news/` | `html` | `html_list_parser` | 100 | Primary OpenAI product, model, safety, enterprise, and research announcements. |
 | `anthropic-news` | Anthropic News | `https://www.anthropic.com/news` | `html` | `html_list_parser` | 100 | Primary Claude, Claude Code, product, safety, and research announcements. |
-| `google-blog-feed` | Google Blog Feed | `https://blog.google/feed/` | `rss` | `rss_parser` | 90 | Broad Google product and AI announcements; filter by AI/Gemini/cloud tags during normalization. |
+| `mistral-news` | Mistral News | `https://mistral.ai/rss.xml` | `rss` | `rss_parser` | 84 | Important model, agent, research, and enterprise AI updates with a live-valid RSS endpoint. |
+| `huggingface-blog-feed` | Hugging Face Blog Feed | `https://huggingface.co/blog/feed.xml` | `rss` | `rss_parser` | 82 | Strong signal for open model ecosystem, tooling, and community adoption. |
 | `github-openai-python-releases` | OpenAI Python GitHub Releases | `https://github.com/openai/openai-python/releases.atom` | `github_releases` | `github_releases_atom` | 70 | Official SDK changes can affect developer code directly. |
+
+## Disabled After Live Validation
+
+| Source ID | Source | URL | Why Disabled |
+| --- | --- | --- | --- |
+| `openai-news` | OpenAI News | `https://openai.com/news/` | 2026-08-01 server-side fetch returned HTTP 403. Keep as backlog until a reliable official endpoint or fetch policy is confirmed. |
+| `google-blog-feed` | Google Blog Feed | `https://blog.google/feed/` | 2026-08-01 live response returned HTML instead of RSS. Keep disabled until a valid official feed URL is confirmed. |
 
 ## Optional MVP Source
 
@@ -43,9 +50,9 @@ Coverage judgment:
 
 These sources are enabled to prove the pipeline.
 
-1. OpenAI News
-2. Anthropic News
-3. Google Blog Feed
+1. Anthropic News
+2. Mistral RSS
+3. Hugging Face Blog Feed
 4. OpenAI Python GitHub Releases
 
 ### Tier 2 - Next Official Sources
@@ -54,9 +61,7 @@ These should be the first expansion after parser and cache behavior are stable.
 
 | Source ID | Source | URL | Suggested Type | Why |
 | --- | --- | --- | --- | --- |
-| `mistral-news` | Mistral News | `https://mistral.ai/news/` | `html` | Important model, agent, research, and enterprise AI updates. |
 | `meta-ai-blog` | Meta AI Blog | `https://ai.meta.com/blog/` | `html` | Open model, multimodal, research, and AI infrastructure updates. |
-| `huggingface-blog-feed` | Hugging Face Blog Feed | `https://huggingface.co/blog/feed.xml` | `rss` | Strong signal for open model ecosystem, tooling, and community adoption. |
 | `github-changelog-copilot` | GitHub Changelog - Copilot | `https://github.blog/changelog/` | `html` or `rss` | Coding-agent and Copilot changes directly affect solo developer workflow. |
 | `microsoft-ai-blog` | Microsoft AI Blog | `https://www.microsoft.com/en-us/ai/blog/` | `html` | Azure AI, Copilot, enterprise AI, and platform changes. |
 
@@ -98,6 +103,10 @@ These can catch fast trend movement, but they should never be treated as confirm
 | `x-trusted-ai-allow-list` | X trusted AI allow-list | API or external export | Fastest researcher/lab signal, especially for Chinese AI researchers and open-weight releases. |
 | `threads-trusted-ai-allow-list` | Threads trusted AI allow-list | API or external export | Useful only if API access and allowed public search behavior are confirmed. |
 
+Detailed allow-list candidate document:
+
+- [Trusted AI Signal Watchlist](../../../trusted-ai-signal-watchlist.md)
+
 ## Expansion Rule
 
 Do not enable every source at once.
@@ -112,6 +121,13 @@ Recommended order:
 
 Each new tier should keep partial failure behavior. One broken source must not block the whole daily digest.
 
+Karpathy LLM Wiki 적용 기준:
+
+- source ingestion은 raw source를 보존한다.
+- ranking/summarization은 wiki synthesis layer를 만든다.
+- social signal은 빠른 감지용 source lineage로 남기되, official confirmation 전에는 사실로 승격하지 않는다.
+- 정기 lint에서 stale claim, contradiction, orphan tag, unconfirmed signal을 확인한다.
+
 ## Disabled Backlog Sources
 
 These should be recorded but disabled in Task 002 until the MVP pipeline is stable.
@@ -122,9 +138,7 @@ These should be recorded but disabled in Task 002 until the MVP pipeline is stab
 | `kimi-k3-page` | Kimi K3 page | `html` | High-value current model signal, but model pages are less feed-like than news indexes. |
 | `deepseek-api-updates` | DeepSeek API Change Log | `html` | Important model/API updates, but should be added after MVP HTML parser proves stable. |
 | `qwen-blog` | Qwen Blog | `html` | Important open-weight model updates, but source shape should be validated separately. |
-| `mistral-news` | Mistral News | `html` | Strong official vendor source; can be next enabled source after initial 4. |
 | `meta-ai-blog` | Meta AI Blog | `html` | Important open model source; add after initial HTML parser hardening. |
-| `huggingface-blog` | Hugging Face Blog | `rss` or `html` | Important ecosystem source, but high volume needs filtering. |
 | `spring-news` | Spring News | `html` | Backend domain, not AI MVP scope. |
 
 ## Configuration Rules
@@ -138,7 +152,7 @@ These should be recorded but disabled in Task 002 until the MVP pipeline is stab
 ## Review Checklist
 
 - enabled source list matches Task 002 MVP scope.
-- disabled backlog includes Kimi, DeepSeek, Qwen, Mistral, Meta, and Hugging Face candidates.
+- disabled backlog includes Kimi, DeepSeek, Qwen, Meta, OpenAI News, Google Blog Feed, and Spring candidates.
 - expansion tiers cover official labs, open model ecosystems, coding tools, benchmarks, research, and community signals.
 - parser type is explicit for each enabled source.
 - social/community sources are not mixed into the official MVP.
