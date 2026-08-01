@@ -17,6 +17,7 @@ Reference:
 - LLM Wiki 보강 gap 분석: [docs/llm-wiki-hotfix-gap-analysis.md](llm-wiki-hotfix-gap-analysis.md)
 - 남은 구현 번호표: [docs/remaining-implementation-plan.md](remaining-implementation-plan.md)
 - social signal 수집 방식: [docs/social-signal-collection-plan.md](social-signal-collection-plan.md)
+- 반복 작업 하네스: [docs/v2-task-harness.md](v2-task-harness.md)
 
 ## 2. 전체 구현 순서
 
@@ -224,6 +225,8 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 ## 4. 진행 상태와 로그 원칙
 
 각 task는 작업 단계별 진행 상태를 문서로 남긴다.
+
+Task 시작 전, 구현 후, showcase 작성 후, PR/merge 후에는 [v2 Task Harness](v2-task-harness.md)의 체크리스트를 사용한다.
 
 권장 파일:
 

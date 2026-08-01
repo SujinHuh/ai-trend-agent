@@ -10,11 +10,12 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 2. [Requirements v2 - LLM Wiki and Hermes](requirements-v2-llm-wiki-hermes.md)
 3. [Development Plan v2 - LLM Wiki, Hermes, Slack](development-plan-v2-llm-wiki-hermes.md)
 4. [Acceptance Criteria](acceptance-criteria.md)
-5. [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
-6. [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
-7. [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
-8. [Remaining Implementation Plan](remaining-implementation-plan.md)
-9. [Social Signal Collection Plan](social-signal-collection-plan.md)
+5. [v2 Task Harness](v2-task-harness.md)
+6. [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
+7. [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
+8. [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
+9. [Remaining Implementation Plan](remaining-implementation-plan.md)
+10. [Social Signal Collection Plan](social-signal-collection-plan.md)
 
 ## 현재 작업
 
@@ -64,6 +65,7 @@ http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/com
 
 - [Documentation Workflow](doc-workflow.md)
 - [Harness Workflow](harness-workflow.md)
+- [v2 Task Harness](v2-task-harness.md)
 - [Showcase Workflow](showcase-workflow.md)
 - [PR Workflow](pr-workflow.md)
 - [Token Workflow](token-workflow.md)
@@ -71,6 +73,7 @@ http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/com
 ## 보조 참고 문서
 
 - [Source Registry](source-registry.md)
+- [v2 Task Harness](v2-task-harness.md)
 - [LLM Wiki Karpathy Reference](llm-wiki-karpathy-reference.md)
 - [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
 - [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)

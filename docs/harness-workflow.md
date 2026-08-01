@@ -117,6 +117,8 @@ docs/task/005_hermes_cron/
 
 전체 1-10번 순서는 [Implementation Sequence v2](implementation-sequence-v2.md)를 따른다.
 
+반복 체크와 완료 게이트는 [v2 Task Harness](v2-task-harness.md)를 따른다.
+
 ## 5. 개발 루프
 
 1. 작업 문서 생성
@@ -128,6 +130,8 @@ docs/task/005_hermes_cron/
 7. 구현 노트 작성
 8. 검증 리포트 작성
 9. 작업 로그 기록
+
+v2 task에서는 위 루프를 수동 기억에 의존하지 않고 [v2 Task Harness](v2-task-harness.md)의 gate, verify, showcase, PR, merge check로 확인한다.
 
 ## 6. 오류 처리 루프
 
