@@ -15,7 +15,8 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 7. [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
 8. [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
 9. [Remaining Implementation Plan](remaining-implementation-plan.md)
-10. [Social Signal Collection Plan](social-signal-collection-plan.md)
+10. [LLM Token and Cost Plan](llm-token-cost-plan.md)
+11. [Social Signal Collection Plan](social-signal-collection-plan.md)
 
 ## 현재 작업
 
@@ -121,6 +122,7 @@ http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.htm
 - [Trusted AI Signal Watchlist](trusted-ai-signal-watchlist.md)
 - [LLM Wiki Hotfix Gap Analysis](llm-wiki-hotfix-gap-analysis.md)
 - [Remaining Implementation Plan](remaining-implementation-plan.md)
+- [LLM Token and Cost Plan](llm-token-cost-plan.md)
 - [Social Signal Collection Plan](social-signal-collection-plan.md)
 - [Data Schema](data-schema.md)
 - [Operations](operations.md)

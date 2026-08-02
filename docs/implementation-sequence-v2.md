@@ -85,6 +85,8 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - 요약
 - `whyItMatters`
 - `practicalImpact`
+- LLM 기반 중요도 판단
+- LLM 기반 사용자 관심사 재정렬
 - `trendCategory`
 - `actionLevel`
 - confidence score
@@ -93,6 +95,14 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - confirmation status
 - staleness policy
 - urgent candidate 분리
+- LLM token/cost usage log
+
+구현 경계:
+
+- 현재 Task 003 MVP는 LLM 없이 deterministic synthesis/ranking으로 동작한다.
+- 최종 제품 목표에는 LLM 요약, 중요도 판단, 왜 중요한지 분석, 사용자 관심사 기반 재정렬이 포함된다.
+- LLM 비용을 제한하기 위해 전체 크롤링 결과가 아니라 deterministic ranking 상위 5-10개만 기본 LLM 입력으로 사용한다.
+- 크롤링, DB 저장, Slack 발송 자체는 LLM token을 사용하지 않는다.
 
 상세 실행 순서:
 

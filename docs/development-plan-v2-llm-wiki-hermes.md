@@ -106,10 +106,13 @@ LLM Wiki
 - LLM 요약
 - `whyItMatters` 생성
 - `practicalImpact` 생성
+- 중요도와 긴급도에 대한 LLM 판단
+- 사용자 관심 태그와 과거 피드백 기반 재정렬
 - tag와 domain 부여
 - confidence score 계산
 - importance score 계산
 - urgent alert 후보 분리
+- LLM token 사용량과 추정 비용 기록
 
 완료 기준:
 
@@ -117,6 +120,8 @@ LLM Wiki
 - 기본 domain은 `ai`다.
 - urgent alert 후보는 별도 목록으로 분리된다.
 - LLM이 원문에 없는 내용을 확정적으로 쓰지 않도록 프롬프트와 검증 규칙을 둔다.
+- 상위 5-10개 후보만 기본 LLM 요약 대상으로 삼아 daily token 비용을 제한한다.
+- 매 실행마다 input/output token과 추정 비용이 기록된다.
 
 ## 8. Phase 4: Slack 수동 발송
 

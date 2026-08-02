@@ -111,6 +111,41 @@ Hermes agent는 단순 요약기가 아니라 AI 트렌드 감시자이자 전�
 - Slack에 보낼 짧은 digest를 만든다.
 - 실패한 출처와 확인 필요한 항목을 숨기지 않고 표시한다.
 
+### 4.2.1 LLM 판단과 토큰 사용 경계
+
+매일 `07:00 KST` AI Trend Slack digest의 최종 목표는 단순 링크 목록이 아니라, 사용자가 바로 읽을 수 있는 요약과 판단이다.
+
+LLM이 필요한 작업:
+
+- 원문 또는 excerpt를 읽고 짧은 `summary`를 만든다.
+- 해당 변화가 왜 중요한지 `whyItMatters`를 작성한다.
+- 코드, 도구 선택, 비용, 학습, 제품 판단에 주는 `practicalImpact`를 작성한다.
+- 중요도, 긴급도, 신뢰도, action level을 판단한다.
+- 사용자의 관심 태그와 과거 피드백을 기준으로 digest 후보를 재정렬한다.
+- Hermes agent가 실행 결과와 비민감 피드백을 학습해 다음 정책을 개선한다.
+
+LLM이 필요하지 않은 작업:
+
+- RSS, HTML, GitHub release, HN/Reddit feed 같은 공개 출처 fetch
+- parser 기반 title, URL, date, excerpt 추출
+- canonical URL 중복 제거
+- source registry validation
+- DB 저장
+- Slack Incoming Webhook 발송
+- Cloud Scheduler 또는 Hermes의 `/cron` 호출
+
+따라서 크롤링과 Slack 발송만으로는 LLM token 비용이 거의 들지 않는다. 하지만 사람이 읽기 좋은 요약, "왜 중요한지", 개인 관심사 기반 재정렬을 사용하려면 LLM API token 비용이 발생한다.
+
+운영 원칙:
+
+- 모든 수집 항목을 LLM에 넣지 않는다.
+- 먼저 deterministic ranking으로 후보를 줄인다.
+- 기본 LLM 대상은 상위 5-10개 digest 후보로 제한한다.
+- 항목별 원문 전체 대신 title, excerpt, source metadata, canonical URL, 기존 LLM Wiki context를 우선 사용한다.
+- full article LLM 요약은 중요도 높은 항목이나 excerpt가 부족한 항목에만 선택적으로 사용한다.
+- `cron_runs` 또는 별도 cost log에 `llmInputTokens`, `llmOutputTokens`, `estimatedCostUsd`를 기록한다.
+- LLM prompt와 response에는 raw Slack webhook, `CRON_SECRET`, OAuth token, 개인 인증 정보가 절대 들어가지 않아야 한다.
+
 ### 4.3 Slack Delivery
 
 Slack은 MVP의 1차 사용자 접점이다.
@@ -435,11 +470,12 @@ Hermes agent container
 - arXiv 또는 GitHub release 중 1개 이상
 - 코드 기반 검증
 - canonical URL 중복 제거
-- LLM 요약
+- LLM 요약, 중요도 판단, `whyItMatters`, `practicalImpact`, 사용자 관심사 기반 재정렬
 - LLM Wiki 저장
 - Hermes `/cron` 실행 설계
 - Slack Incoming Webhook 발송
 - 실패 로그
+- LLM token 사용량과 추정 비용 기록
 - 알림 모드 설정값
 - urgent alert 후보 분리
 - AI Trend 도메인 우선 구조

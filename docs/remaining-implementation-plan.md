@@ -31,6 +31,9 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 21 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
 | 22 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
 | 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
+| 24 | LLM summary provider integration | 007C LLM digest intelligence | Pending | Hermes/Ranking agent | Top 5-10 후보에만 LLM 요약, 중요도 판단, why/practicalImpact 생성 |
+| 25 | LLM token/cost logging | 007C LLM digest intelligence | Pending | Ops/Ranking agent | `cron_runs` 또는 별도 테이블에 input/output tokens, estimated cost 기록 |
+| 26 | user interest reranking | 007C LLM digest intelligence or Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
 
 ## 진행 원칙
 
@@ -39,6 +42,9 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 3. Lint는 Task 003에서 최소 정책을 남기고, command 구현은 별도 later lint task로 분리한다.
 4. X/Threads/Reddit/HN 신호는 공식 출처로 확인되기 전까지 `needs_confirmation`이다.
 5. X/Threads live collector와 HN/Reddit live polling runner는 007 완료 조건이 아니라 007B 후속 확장이다.
+6. 크롤링, 저장, Slack 발송만으로는 LLM token 비용이 발생하지 않는다.
+7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석, 개인 관심사 기반 재정렬은 LLM token을 사용하는 별도 구현 범위다.
+8. LLM 적용은 전체 수집 결과가 아니라 deterministic ranking 상위 5-10개 후보부터 시작한다.
 
 ## Task 003 최소 Done Criteria
 
