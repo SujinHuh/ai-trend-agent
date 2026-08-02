@@ -68,6 +68,70 @@ Rules:
 3. Slack-ready digest candidates must be `confirmed` or `official_only`.
 4. social-only items can influence velocity but not factual confidence.
 
+## Scoring Contract
+
+The first Task 003 ranker is deterministic and rule-based.
+
+`importanceScore`:
+
+- range: `0` to `100`
+- higher score ranks earlier
+- clamp final score to the allowed range
+
+Base score:
+
+- official source evidence: `+35`
+- source evidence exists but is not official: `+15`
+- title or excerpt includes release, launch, model, API, benchmark, open source, safety, agent, or coding signal: `+15`
+- published within the report date KST window: `+20`
+- published within the previous 3 days: `+10`
+- missing published date: `+5`
+
+Category weights:
+
+- `model`: `+15`
+- `coding_agent`: `+15`
+- `product`: `+12`
+- `open_source`: `+10`
+- `benchmark`: `+10`
+- `infra`: `+8`
+- `safety`: `+8`
+- `research`: `+7`
+- `business`: `+5`
+
+Penalty:
+
+- `needs_confirmation`: `-20`
+- `conflicting`: `-40`
+- stale item beyond 14 days: `-20`
+
+Source priority:
+
+- source registry priority adds up to `+10`
+- this keeps high-priority official sources ahead when all other signals tie
+
+`confidence`:
+
+- range: `0` to `1`
+- official source evidence starts at `0.85`
+- multiple evidence rows add up to `+0.05`
+- `needs_confirmation` is capped at `0.6`
+- `conflicting` is capped at `0.4`
+
+Tie-break order:
+
+1. higher `importanceScore`
+2. higher `confidence`
+3. newer `publishedAt`
+4. lexicographic `trendItem.id`
+
+`actionLevel`:
+
+- `do_now`: score `>= 80` and `confirmationStatus` is `confirmed` or `official_only`
+- `do_next`: score `>= 60` and not `needs_confirmation`
+- `watch_later`: score `>= 30`
+- `needs_confirmation`: any unconfirmed item regardless of score
+
 ## Karpathy LLM Wiki Mapping
 
 - raw source: Task 002 cache and `SourceEvidence`
@@ -82,3 +146,6 @@ Rules:
 - source lineage is visible in output.
 - `needs_confirmation` gate is tested.
 - generated records preserve original source evidence links.
+- ranking order is stable for tied inputs.
+- empty report dates return an empty candidate list, not an error.
+- assessment save is idempotent for the same trend item and report date.

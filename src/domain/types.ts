@@ -35,3 +35,55 @@ export interface DigestWithItems {
   items: TrendItem[];
   evidence: SourceEvidence[];
 }
+
+export type TrendCategory =
+  | "model"
+  | "coding_agent"
+  | "product"
+  | "open_source"
+  | "benchmark"
+  | "infra"
+  | "safety"
+  | "business"
+  | "research";
+
+export type ActionLevel = "do_now" | "do_next" | "watch_later" | "needs_confirmation";
+
+export type ConfirmationStatus = "confirmed" | "official_only" | "needs_confirmation" | "conflicting" | "excluded";
+
+export interface TrendAssessment {
+  id: string;
+  trendItemId: string;
+  reportDate: string;
+  summary: string;
+  whyItMatters: string;
+  practicalImpact: string;
+  trendCategory: TrendCategory;
+  actionLevel: ActionLevel;
+  confirmationStatus: ConfirmationStatus;
+  confidence: number;
+  importanceScore: number;
+  contradictionNotes: string | null;
+  stalenessPolicy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrendAssessmentLineage {
+  assessmentId: string;
+  sourceEvidenceId: string;
+  sourceName: string;
+  sourceUrl: string;
+  confidenceScore: number;
+}
+
+export interface TrendAssessmentInput {
+  trendItem: TrendItem;
+  evidence: SourceEvidence[];
+}
+
+export interface DigestCandidate {
+  assessment: TrendAssessment;
+  trendItem: TrendItem;
+  lineage: TrendAssessmentLineage[];
+}

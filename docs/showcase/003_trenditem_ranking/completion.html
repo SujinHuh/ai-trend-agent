@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrendItem Ranking Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --warn: #9a5b00;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 003 Verified</span>
+        <h1>TrendItem Ranking and LLM Wiki Synthesis</h1>
+        <p>
+          AI Trend Agent v2의 세 번째 기반 작업입니다. 수집된 TrendItem과 SourceEvidence를
+          deterministic synthesis record와 ranked digest candidate로 변환했습니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>14 / 14</strong>
+          <p>구현, 검수 수정, validation, completion report까지 완료했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>60 passed</strong>
+          <p>13개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>New tables</span>
+          <strong>2</strong>
+          <p><code>trend_assessments</code>, <code>trend_assessment_lineage</code></p>
+        </div>
+        <div class="card metric">
+          <span>CLI</span>
+          <strong>3</strong>
+          <p>digest candidates, wiki query, wiki index 명령을 추가했습니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>LLM 없이 동작하는 deterministic summary, category, confidence, score 생성</li>
+          <li><code>needs_confirmation</code>이 <code>do_now</code>로 승격되지 않는 trust gate</li>
+          <li>source evidence를 보존하는 lineage table과 저장 로직</li>
+          <li>report date별 digest candidate 조회와 안정적인 tie-break 정렬</li>
+          <li>staleness policy와 contradiction notes 저장 필드</li>
+          <li>minimal <code>wiki:query</code>, <code>wiki:index</code> entrypoint</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run digest:candidates -- --date=2026-08-02 --limit=5
+npm run wiki:query -- --date=2026-08-02 --limit=5
+npm run wiki:index -- --date=2026-08-02 --out=/tmp/ai-trend-agent-wiki-index.md</code></pre>
+        <p>2026-08-02 로컬 데이터 윈도우는 현재 후보 0건이지만, 명령은 정상 실행됩니다.</p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>git diff --check       passed
+npm run typecheck      passed
+npm test               passed
+
+13 test files passed
+60 tests passed</code></pre>
+        </div>
+        <div class="card">
+          <h2>검수 반영</h2>
+          <ul>
+            <li>SQL 정렬에 <code>published_at</code> tie-break 반영</li>
+            <li>누락된 lineage evidence는 에러 처리</li>
+            <li><code>PRAGMA user_version = 3</code> 적용</li>
+            <li><code>wiki:query</code>, <code>wiki:index</code>가 synthesis를 먼저 실행</li>
+            <li>CLI date format validation 추가</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>제외한 것</h2>
+        <ul>
+          <li>LLM provider 호출</li>
+          <li>Slack payload rendering 또는 sending</li>
+          <li>Hermes cron</li>
+          <li>X, Threads, Reddit, Hacker News collector</li>
+          <li>full wiki lint command</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>다음 작업</h2>
+        <p>
+          다음 v2 구현 단계는 <strong>Task 004 Slack 수동 발송</strong>입니다.
+          Task 004는 Task 003의 ranked candidates를 읽어 Slack Incoming Webhook payload를 만들고,
+          실제 전송은 기본적으로 명시된 명령에서만 수행해야 합니다.
+        </p>
+      </section>
+
+      <section class="card links">
+        <h2>확인 링크</h2>
+        <ul>
+          <li><a href="../../task/003_trenditem_ranking/validation_report.md">Task 003 Validation Report</a></li>
+          <li><a href="../../task/003_trenditem_ranking/phase_status.md">Task 003 Phase Status</a></li>
+          <li><a href="../../implementation-sequence-v2.md">Implementation Sequence v2</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

@@ -17,12 +17,14 @@
 npm run digest:candidates -- --date=YYYY-MM-DD --limit=5
 ```
 
-11. Add query/index commands if scope remains small:
+11. Add minimal query/index commands only if they stay local and deterministic:
 
 ```text
 npm run wiki:query -- --date=YYYY-MM-DD
 npm run wiki:index -- --out=docs/wiki/index.md
 ```
+
+Do not add full wiki lint or LLM query behavior in Task 003.
 
 12. Add tests for ranking, gate, source lineage, candidate selection, and CLI output.
 13. Run validation.
@@ -41,3 +43,5 @@ npm run wiki:index -- --out=docs/wiki/index.md
 ## Scope Boundary
 
 Do not implement X, Threads, Reddit, or Hacker News collectors in Task 003. Task 003 may only consume social lineage if it already exists.
+
+Do not implement Slack payload rendering or sending in Task 003. Slack-ready means the candidate has enough local fields for Task 004 to render later.

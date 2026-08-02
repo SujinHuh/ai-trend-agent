@@ -1,12 +1,16 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { DigestWithItems } from "./domain/types.js";
+import type { DigestCandidate, DigestWithItems } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
+import { resolveProjectPath } from "./security/path-scope.js";
+import type { SourceFetcher } from "./sources/fetch-cache.js";
 import { ingestSources } from "./sources/ingest-sources.js";
 import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-config.js";
+import { runTrendSynthesis } from "./synthesis/run-synthesis.js";
+import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
@@ -17,10 +21,22 @@ interface CliOptions {
   forceRefresh: boolean;
   cacheRoot?: string;
   date?: string;
+  limit: number;
+  outPath?: string;
+}
+
+interface CliDependencies {
+  env?: Record<string, string | undefined>;
+  fetcher?: SourceFetcher;
+  stdout?: (value: string) => void;
 }
 
 async function main(): Promise<void> {
-  const [command, ...args] = process.argv.slice(2);
+  await runCliCommand(process.argv.slice(2));
+}
+
+export async function runCliCommand(argv: string[], dependencies: CliDependencies = {}): Promise<void> {
+  const [command, ...args] = argv;
   const options = parseOptions(args);
 
   switch (command) {
@@ -38,6 +54,15 @@ async function main(): Promise<void> {
       break;
     case "ingest:run":
       await runIngestion(options);
+      break;
+    case "digest:candidates":
+      runDigestCandidates(options);
+      break;
+    case "wiki:query":
+      queryWiki(options);
+      break;
+    case "wiki:index":
+      writeWikiIndex(options);
       break;
     default:
       printUsageAndExit(command);
@@ -140,13 +165,14 @@ function getDigest(options: CliOptions): void {
 }
 
 function validateSources(options: CliOptions): void {
-  const sources = loadSourceConfigs(options.sourceConfigPath, { includeDisabled: true });
+  const sourceConfigPath = resolveProjectPath(options.sourceConfigPath, "source config path");
+  const sources = loadSourceConfigs(sourceConfigPath, { includeDisabled: true });
   const enabledSources = sources.filter((source) => source.enabled);
 
   console.log(
     JSON.stringify(
       {
-        configPath: options.sourceConfigPath,
+        configPath: sourceConfigPath,
         sourceCount: sources.length,
         enabledSourceCount: enabledSources.length,
         enabledSourceIds: enabledSources.map((source) => source.id)
@@ -162,7 +188,7 @@ async function runIngestion(options: CliOptions): Promise<void> {
     throw new Error("Missing required option: --date=YYYY-MM-DD");
   }
 
-  const sources = loadSourceConfigs(options.sourceConfigPath);
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"));
   const { db, store } = openStore(options.dbPath);
 
   try {
@@ -170,7 +196,7 @@ async function runIngestion(options: CliOptions): Promise<void> {
     const ingestOptions = {
       reportDate: options.date,
       forceRefresh: options.forceRefresh,
-      ...(options.cacheRoot === undefined ? {} : { cacheRoot: options.cacheRoot })
+      ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root") })
     };
     const result = await ingestSources(sources, store, ingestOptions);
 
@@ -190,8 +216,131 @@ async function runIngestion(options: CliOptions): Promise<void> {
   }
 }
 
-function openStore(dbPath: string) {
-  const resolvedDbPath = resolve(dbPath);
+function runDigestCandidates(options: CliOptions): void {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+    includeDisabled: true
+  });
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const synthesisResult = runTrendSynthesis({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit
+    });
+    const candidates = selectDigestCandidates({
+      store,
+      reportDate: options.date,
+      limit: options.limit
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          ...synthesisResult,
+          limit: options.limit,
+          candidates: candidates.map(formatDigestCandidate)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function queryWiki(options: CliOptions): void {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+    includeDisabled: true
+  });
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    runTrendSynthesis({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit
+    });
+    const candidates = selectDigestCandidates({
+      store,
+      reportDate: options.date,
+      limit: options.limit
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          reportDate: options.date,
+          itemCount: candidates.length,
+          items: candidates.map(formatDigestCandidate)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function writeWikiIndex(options: CliOptions): void {
+  const outPath = options.outPath ?? "docs/wiki/index.md";
+  const reportDate = options.date ?? new Date().toISOString().slice(0, 10);
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+    includeDisabled: true
+  });
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    runTrendSynthesis({
+      store,
+      reportDate,
+      sources,
+      limit: options.limit
+    });
+    const candidates = selectDigestCandidates({
+      store,
+      reportDate,
+      limit: options.limit
+    });
+    const rendered = renderWikiIndex(reportDate, candidates);
+    const resolvedOutPath = resolveProjectPath(outPath, "wiki index output path");
+
+    mkdirSync(dirname(resolvedOutPath), { recursive: true });
+    writeFileSync(resolvedOutPath, rendered);
+
+    console.log(
+      JSON.stringify(
+        {
+          reportDate,
+          outPath,
+          itemCount: candidates.length
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function openStore(dbPath: string, env: Record<string, string | undefined> = process.env) {
+  const resolvedDbPath = resolveProjectPath(dbPath, "SQLite database path", env);
   mkdirSync(dirname(resolvedDbPath), { recursive: true });
 
   const db = openSqliteDatabase(resolvedDbPath);
@@ -202,12 +351,13 @@ function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = {
     dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
     sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
-    forceRefresh: false
+    forceRefresh: false,
+    limit: 5
   };
 
   for (const arg of args) {
     if (arg.startsWith("--date=")) {
-      options.date = arg.slice("--date=".length);
+      options.date = parseReportDate(arg.slice("--date=".length));
     } else if (arg.startsWith("--db=")) {
       options.dbPath = arg.slice("--db=".length);
     } else if (arg.startsWith("--config=")) {
@@ -216,6 +366,10 @@ function parseOptions(args: string[]): CliOptions {
       options.forceRefresh = true;
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
+    } else if (arg.startsWith("--limit=")) {
+      options.limit = parsePositiveInteger(arg.slice("--limit=".length), "--limit");
+    } else if (arg.startsWith("--out=")) {
+      options.outPath = arg.slice("--out=".length);
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -234,6 +388,78 @@ function formatDigest(digest: DigestWithItems) {
   };
 }
 
+function formatDigestCandidate(candidate: DigestCandidate) {
+  return {
+    id: candidate.assessment.id,
+    trendItemId: candidate.trendItem.id,
+    title: candidate.trendItem.title,
+    canonicalUrl: candidate.trendItem.canonicalUrl,
+    sourceName: candidate.trendItem.sourceName,
+    publishedAt: candidate.trendItem.publishedAt,
+    summary: candidate.assessment.summary,
+    whyItMatters: candidate.assessment.whyItMatters,
+    practicalImpact: candidate.assessment.practicalImpact,
+    trendCategory: candidate.assessment.trendCategory,
+    actionLevel: candidate.assessment.actionLevel,
+    confirmationStatus: candidate.assessment.confirmationStatus,
+    confidence: candidate.assessment.confidence,
+    importanceScore: candidate.assessment.importanceScore,
+    contradictionNotes: candidate.assessment.contradictionNotes,
+    stalenessPolicy: candidate.assessment.stalenessPolicy,
+    lineage: candidate.lineage
+  };
+}
+
+function renderWikiIndex(reportDate: string, candidates: DigestCandidate[]): string {
+  const lines = [
+    "# LLM Wiki Index",
+    "",
+    `Report date: ${reportDate}`,
+    "",
+    "## Digest Candidates",
+    ""
+  ];
+
+  if (candidates.length === 0) {
+    lines.push("No digest candidates found.");
+  } else {
+    candidates.forEach((candidate, index) => {
+      lines.push(
+        `${index + 1}. ${candidate.trendItem.title}`,
+        `   - ID: ${candidate.assessment.id}`,
+        `   - Score: ${candidate.assessment.importanceScore}`,
+        `   - Action: ${candidate.assessment.actionLevel}`,
+        `   - Source: ${candidate.trendItem.canonicalUrl}`
+      );
+    });
+  }
+
+  lines.push("");
+  return lines.join("\n");
+}
+
+function parsePositiveInteger(value: string, label: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${label} must be a positive integer`);
+  }
+
+  return parsed;
+}
+
+function parseReportDate(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error("--date must use YYYY-MM-DD format");
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new Error("--date must be a valid calendar date");
+  }
+
+  return value;
+}
+
 function printUsageAndExit(command: string | undefined): never {
   const commandLabel = command ?? "(missing)";
   throw new Error(
@@ -245,11 +471,16 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run digest:get -- --date=YYYY-MM-DD",
       "  npm run sources:validate",
       "  npm run ingest:run -- --date=YYYY-MM-DD",
+      "  npm run digest:candidates -- --date=YYYY-MM-DD --limit=5",
+      "  npm run wiki:query -- --date=YYYY-MM-DD",
+      "  npm run wiki:index -- --date=YYYY-MM-DD --out=docs/wiki/index.md",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",
       "  --cache-root=PATH  Override the source cache root",
-      "  --force-refresh    Bypass source cache"
+      "  --force-refresh    Bypass source cache",
+      "  --limit=N          Limit candidate output",
+      "  --out=PATH         Output path for wiki:index"
     ].join("\n")
   );
 }

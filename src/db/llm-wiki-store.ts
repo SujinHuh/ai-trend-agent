@@ -1,9 +1,23 @@
-import type { Digest, DigestWithItems, SourceEvidence, TrendItem } from "../domain/types.js";
+import type {
+  ActionLevel,
+  ConfirmationStatus,
+  Digest,
+  DigestCandidate,
+  DigestWithItems,
+  SourceEvidence,
+  TrendAssessment,
+  TrendAssessmentInput,
+  TrendAssessmentLineage,
+  TrendCategory,
+  TrendItem
+} from "../domain/types.js";
 import {
   createDigestId,
   createEvidenceId,
+  createTrendAssessmentId,
   createTrendIdentity
 } from "../identity/stable-id.js";
+import { canonicalizeUrl } from "../url/canonicalize-url.js";
 import { initializeSchema } from "./schema.js";
 import type { SqliteDatabase } from "./sqlite.js";
 
@@ -30,6 +44,32 @@ interface SourceEvidenceRow {
   source_name: string;
   fetched_at: string;
   evidence_excerpt: string | null;
+  confidence_score: number;
+}
+
+interface TrendAssessmentRow {
+  id: string;
+  trend_item_id: string;
+  report_date: string;
+  summary: string;
+  why_it_matters: string;
+  practical_impact: string;
+  trend_category: TrendCategory;
+  action_level: ActionLevel;
+  confirmation_status: ConfirmationStatus;
+  confidence: number;
+  importance_score: number;
+  contradiction_notes: string | null;
+  staleness_policy: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TrendAssessmentLineageRow {
+  assessment_id: string;
+  source_evidence_id: string;
+  source_name: string;
+  source_url: string;
   confidence_score: number;
 }
 
@@ -60,6 +100,22 @@ export interface LinkDigestTrendItemInput {
   digestId: string;
   trendItemId: string;
   position: number;
+}
+
+export interface SaveTrendAssessmentInput {
+  trendItemId: string;
+  reportDate: string;
+  summary: string;
+  whyItMatters: string;
+  practicalImpact: string;
+  trendCategory: TrendCategory;
+  actionLevel: ActionLevel;
+  confirmationStatus: ConfirmationStatus;
+  confidence: number;
+  importanceScore: number;
+  contradictionNotes?: string | null;
+  stalenessPolicy: string;
+  sourceEvidenceIds: string[];
 }
 
 export class LlmWikiStore {
@@ -269,6 +325,246 @@ export class LlmWikiStore {
     return row === undefined ? null : mapSourceEvidence(row);
   }
 
+  saveTrendAssessment(input: SaveTrendAssessmentInput): TrendAssessment {
+    const id = createTrendAssessmentId({
+      trendItemId: input.trendItemId,
+      reportDate: input.reportDate
+    });
+
+    const save = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `
+            INSERT INTO trend_assessments (
+              id,
+              trend_item_id,
+              report_date,
+              summary,
+              why_it_matters,
+              practical_impact,
+              trend_category,
+              action_level,
+              confirmation_status,
+              confidence,
+              importance_score,
+              contradiction_notes,
+              staleness_policy
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(trend_item_id, report_date) DO UPDATE SET
+              summary = excluded.summary,
+              why_it_matters = excluded.why_it_matters,
+              practical_impact = excluded.practical_impact,
+              trend_category = excluded.trend_category,
+              action_level = excluded.action_level,
+              confirmation_status = excluded.confirmation_status,
+              confidence = excluded.confidence,
+              importance_score = excluded.importance_score,
+              contradiction_notes = excluded.contradiction_notes,
+              staleness_policy = excluded.staleness_policy,
+              updated_at = datetime('now')
+          `
+        )
+        .run(
+          id,
+          input.trendItemId,
+          input.reportDate,
+          input.summary,
+          input.whyItMatters,
+          input.practicalImpact,
+          input.trendCategory,
+          input.actionLevel,
+          input.confirmationStatus,
+          input.confidence,
+          input.importanceScore,
+          input.contradictionNotes ?? null,
+          input.stalenessPolicy
+        );
+
+      this.db.prepare("DELETE FROM trend_assessment_lineage WHERE assessment_id = ?").run(id);
+
+      const insertLineage = this.db.prepare(
+        `
+          INSERT INTO trend_assessment_lineage (
+            assessment_id,
+            source_evidence_id,
+            source_name,
+            source_url,
+            confidence_score
+          )
+          SELECT ?, id, source_name, source_url, confidence_score
+          FROM source_evidence
+          WHERE id = ?
+        `
+      );
+
+      for (const sourceEvidenceId of input.sourceEvidenceIds) {
+        const result = insertLineage.run(id, sourceEvidenceId);
+        if (result.changes !== 1) {
+          throw new Error(`Missing SourceEvidence for assessment lineage: ${sourceEvidenceId}`);
+        }
+      }
+    });
+
+    save();
+
+    const assessment = this.getTrendAssessment(id);
+    if (assessment === null) {
+      throw new Error(`TrendAssessment was not saved: ${id}`);
+    }
+
+    return assessment;
+  }
+
+  getTrendAssessment(id: string): TrendAssessment | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            trend_item_id,
+            report_date,
+            summary,
+            why_it_matters,
+            practical_impact,
+            trend_category,
+            action_level,
+            confirmation_status,
+            confidence,
+            importance_score,
+            contradiction_notes,
+            staleness_policy,
+            created_at,
+            updated_at
+          FROM trend_assessments
+          WHERE id = ?
+        `
+      )
+      .get(id) as TrendAssessmentRow | undefined;
+
+    return row === undefined ? null : mapTrendAssessment(row);
+  }
+
+  listTrendAssessmentInputsForReportDate(reportDate: string): TrendAssessmentInput[] {
+    const { startUtc, endUtc } = getKstReportDateWindow(reportDate);
+    const trendItems = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            canonical_url,
+            canonical_hash,
+            title,
+            source_name,
+            published_at
+          FROM trend_items
+          WHERE published_at >= ?
+            AND published_at < ?
+          ORDER BY published_at DESC, id ASC
+        `
+      )
+      .all(startUtc, endUtc) as TrendItemRow[];
+
+    return trendItems.map((row) => {
+      const trendItem = mapTrendItem(row);
+      return {
+        trendItem,
+        evidence: this.listSourceEvidenceForTrendItem(trendItem.id)
+      };
+    });
+  }
+
+  listSourceEvidenceForTrendItem(trendItemId: string): SourceEvidence[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            trend_item_id,
+            source_url,
+            source_name,
+            fetched_at,
+            evidence_excerpt,
+            confidence_score
+          FROM source_evidence
+          WHERE trend_item_id = ?
+          ORDER BY fetched_at DESC, id ASC
+        `
+      )
+      .all(trendItemId) as SourceEvidenceRow[];
+
+    return rows.map(mapSourceEvidence);
+  }
+
+  listDigestCandidates(reportDate: string, limit: number): DigestCandidate[] {
+    const assessmentRows = this.db
+      .prepare(
+        `
+          SELECT
+            trend_assessments.id,
+            trend_assessments.trend_item_id,
+            trend_assessments.report_date,
+            trend_assessments.summary,
+            trend_assessments.why_it_matters,
+            trend_assessments.practical_impact,
+            trend_assessments.trend_category,
+            trend_assessments.action_level,
+            trend_assessments.confirmation_status,
+            trend_assessments.confidence,
+            trend_assessments.importance_score,
+            trend_assessments.contradiction_notes,
+            trend_assessments.staleness_policy,
+            trend_assessments.created_at,
+            trend_assessments.updated_at
+          FROM trend_assessments
+          JOIN trend_items t ON t.id = trend_assessments.trend_item_id
+          WHERE trend_assessments.report_date = ?
+            AND trend_assessments.confirmation_status IN ('confirmed', 'official_only')
+          ORDER BY
+            trend_assessments.importance_score DESC,
+            trend_assessments.confidence DESC,
+            COALESCE(t.published_at, '') DESC,
+            trend_assessments.trend_item_id ASC
+          LIMIT ?
+        `
+      )
+      .all(reportDate, limit) as TrendAssessmentRow[];
+
+    return assessmentRows.map((assessmentRow) => {
+      const assessment = mapTrendAssessment(assessmentRow);
+      const trendItem = this.getTrendItem(assessment.trendItemId);
+      if (trendItem === null) {
+        throw new Error(`Missing TrendItem for assessment: ${assessment.id}`);
+      }
+
+      return {
+        assessment,
+        trendItem,
+        lineage: this.listTrendAssessmentLineage(assessment.id)
+      };
+    });
+  }
+
+  listTrendAssessmentLineage(assessmentId: string): TrendAssessmentLineage[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            assessment_id,
+            source_evidence_id,
+            source_name,
+            source_url,
+            confidence_score
+          FROM trend_assessment_lineage
+          WHERE assessment_id = ?
+          ORDER BY source_name ASC, source_evidence_id ASC
+        `
+      )
+      .all(assessmentId) as TrendAssessmentLineageRow[];
+
+    return rows.map(mapTrendAssessmentLineage);
+  }
+
   getDigestByReportDate(reportDate: string): DigestWithItems | null {
     const digest = this.getDigest(reportDate);
 
@@ -354,5 +650,57 @@ function mapSourceEvidence(row: SourceEvidenceRow): SourceEvidence {
     fetchedAt: row.fetched_at,
     evidenceExcerpt: row.evidence_excerpt,
     confidenceScore: row.confidence_score
+  };
+}
+
+function mapTrendAssessment(row: TrendAssessmentRow): TrendAssessment {
+  return {
+    id: row.id,
+    trendItemId: row.trend_item_id,
+    reportDate: row.report_date,
+    summary: row.summary,
+    whyItMatters: row.why_it_matters,
+    practicalImpact: row.practical_impact,
+    trendCategory: row.trend_category,
+    actionLevel: row.action_level,
+    confirmationStatus: row.confirmation_status,
+    confidence: row.confidence,
+    importanceScore: row.importance_score,
+    contradictionNotes: row.contradiction_notes,
+    stalenessPolicy: row.staleness_policy,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapTrendAssessmentLineage(row: TrendAssessmentLineageRow): TrendAssessmentLineage {
+  return {
+    assessmentId: row.assessment_id,
+    sourceEvidenceId: row.source_evidence_id,
+    sourceName: row.source_name,
+    sourceUrl: row.source_url,
+    confidenceScore: row.confidence_score
+  };
+}
+
+function getKstReportDateWindow(reportDate: string): { startUtc: string; endUtc: string } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+    throw new Error(`Invalid report date: ${reportDate}`);
+  }
+
+  const [year, month, day] = reportDate.split("-").map(Number);
+  if (year === undefined || month === undefined || day === undefined || Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+    throw new Error(`Invalid report date: ${reportDate}`);
+  }
+
+  const start = new Date(Date.UTC(year, month - 1, day - 1, 15, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0));
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new Error(`Invalid report date: ${reportDate}`);
+  }
+
+  return {
+    startUtc: start.toISOString(),
+    endUtc: end.toISOString()
   };
 }
