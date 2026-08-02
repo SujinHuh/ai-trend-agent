@@ -70,10 +70,28 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 Dedicated task docs:
 
 - [Task 007B Requirements](task/007B_social_live_collectors/requirements.md)
+- [Task 007B Plan](task/007B_social_live_collectors/plan.md)
 - [Task 007B Implementation Sequence](task/007B_social_live_collectors/implementation-sequence.md)
+- [Task 007B Phase Status](task/007B_social_live_collectors/phase_status.md)
 
 1. X API collector는 token scope, current rate limit, billing/app policy 확인 후에만 구현한다.
 2. Threads collector는 Meta API scope와 app review 제약 확인 후에만 구현한다.
 3. HN/Reddit live polling runner는 polling interval, cache, policyReviewedAt, deletion/dead filtering을 문서화한 뒤 구현한다.
 4. 모든 live collector는 source별 disabled 기본값을 유지하고 explicit enable이 있어야 실행한다.
 5. live collector도 social-only claim을 `needs_confirmation` 이상으로 승격하지 않는다.
+
+## 007C LLM Digest Intelligence Criteria
+
+Dedicated task docs:
+
+- [Task 007C Requirements](task/007C_llm_digest_intelligence/requirements.md)
+- [Task 007C Plan](task/007C_llm_digest_intelligence/plan.md)
+- [Task 007C Implementation Sequence](task/007C_llm_digest_intelligence/implementation-sequence.md)
+- [Task 007C Phase Status](task/007C_llm_digest_intelligence/phase_status.md)
+
+1. crawler-only mode는 LLM token 없이 계속 동작해야 한다.
+2. LLM mode는 deterministic ranking 상위 5-10개 후보만 기본 입력으로 사용한다.
+3. `summary`, `whyItMatters`, `practicalImpact`, importance/action judgment를 생성한다.
+4. input/output token과 estimated cost를 run별로 기록한다.
+5. prompt에는 Slack webhook URL, `CRON_SECRET`, OAuth token, API key, auth code가 들어가지 않는다.
+6. LLM output도 social-only claim을 `confirmed`로 승격하지 않는다.
