@@ -2,7 +2,7 @@
 
 ## 📌 변경 사항
 
-✅ PR 제목 : `Task 007: Social Allow-List Signal Ingestion`
+✅ PR 제목 : `Task 007: 소셜 Allow-List 신호 수집`
 
 - [x] 신규 기능 추가
 - [ ] 버그 수정
