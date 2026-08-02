@@ -347,4 +347,58 @@ describe("LlmWikiStore", () => {
     db.close();
   });
 
+  it("stores cron runs and finds successful send runs by idempotency key", () => {
+    const { db, store } = openInitializedStore();
+    const failed = store.createCronRun({
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send",
+      startedAt: "2026-08-01T00:00:00.000Z",
+      stepName: "started"
+    });
+    store.markCronRunFailure(failed.id, {
+      finishedAt: "2026-08-01T00:00:01.000Z",
+      stepName: "failed",
+      candidateCount: 0,
+      errorMessage: "temporary"
+    });
+    const running = store.createCronRun({
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send",
+      startedAt: "2026-08-01T00:01:00.000Z",
+      stepName: "started"
+    });
+    const success = store.markCronRunSuccess(running.id, {
+      finishedAt: "2026-08-01T00:01:01.000Z",
+      stepName: "complete",
+      candidateCount: 1
+    });
+
+    expect(store.findSuccessfulCronRun("hermes-cron:daily-digest:2026-08-01")).toEqual(success);
+    expect(store.findSuccessfulCronRun("hermes-cron:daily-digest:2026-08-02")).toBeNull();
+    expect(store.listCronRuns("2026-08-01")).toHaveLength(2);
+    db.close();
+  });
+
+  it("prevents concurrent running send claims for the same cron idempotency key", () => {
+    const { db, store } = openInitializedStore();
+    const input = {
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send" as const,
+      startedAt: "2026-08-01T00:00:00.000Z",
+      stepName: "started"
+    };
+
+    store.createCronRun(input);
+
+    expect(() =>
+      store.createCronRun({
+        ...input,
+        startedAt: "2026-08-01T00:00:01.000Z"
+      })
+    ).toThrow(/UNIQUE constraint failed/);
+    db.close();
+  });
 });

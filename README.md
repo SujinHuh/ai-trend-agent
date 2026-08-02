@@ -2,7 +2,7 @@
 
 AI Trend Agent는 빠르게 변하는 AI 트렌드를 사용자가 직접 계속 검색하지 않아도 되도록, 신뢰 가능한 출처와 빠른 신호 채널을 자동 수집하고, LLM Wiki에 저장한 뒤, Hermes agent가 핵심 변화만 선별해 Slack으로 알려주는 개인용 AI 트렌드 에이전트입니다.
 
-현재 상태: v2 Task 001 `LLM Wiki 로컬 저장소` 구현과 검증이 완료되어 GitHub 브랜치에 push된 상태입니다. 다음 단계는 PR 생성 및 리뷰입니다.
+현재 상태: v2 Task 006 `GCP 배포` 산출물 구현과 로컬/Docker 검증이 완료된 상태입니다. 실제 GCP 배포는 프로젝트 id, region, Slack webhook, cron secret, 첫 invoker 선택을 확인한 뒤 실행합니다.
 
 ## 목적
 
@@ -38,7 +38,7 @@ AI 모델, 에이전트, 개발 도구, 논문, 오픈소스, 제품 정책, API
 
 ```mermaid
 flowchart TD
-  A[Hermes /cron] --> B[Cloud Run worker]
+  A[Hermes agent container<br/>low privilege] -->|CRON_SECRET| B[AI Trend worker container]
   B --> C[설정된 출처]
   C --> D[수집]
   D --> E[검증 및 중복 제거]
@@ -47,47 +47,52 @@ flowchart TD
   G --> H[Slack daily digest]
 ```
 
+Hermes agent는 Docker 또는 Cloud Run으로 격리하고, 학습/판단/정책 개선을 담당합니다. Slack webhook, DB write 권한, Secret Manager 접근 같은 강한 권한은 AI Trend worker 쪽에만 둡니다.
+
 ## 현재 범위
 
-v2 기준 첫 번째 구현 대상은 다음 작업입니다.
+v2 기준 현재 완료된 구현 범위는 다음 작업입니다.
 
 ```text
 001_llm_wiki_local_store
+002_ai_official_source_ingestion
+003_trenditem_ranking
+004_slack_manual_delivery
+005_hermes_cron
+006_gcp_deployment
 ```
 
-v2 Task 001은 SQLite 기반 LLM Wiki 로컬 저장소를 만듭니다.
+v2 Task 006은 Task 005 Hermes cron worker를 Cloud Run에 배포할 수 있도록 production build, Docker image, Secret Manager, Cloud Run, Scheduler, smoke validation 산출물을 만듭니다.
 
 포함 범위:
 
-- SQLite 연결
-- schema 초기화
-- TrendItem 저장
-- Digest 저장
-- SourceEvidence 저장
-- canonical URL 중복 제거
-- 날짜별 digest 조회
-- stable ID 생성
+- production build
+- Cloud Run worker Dockerfile
+- Secret Manager setup script
+- Cloud Run deployment script
+- Cloud Scheduler invocation script
+- deployment smoke script
+- Worker/Hermes 권한 분리 문서
 
 제외 범위:
 
-- 실제 외부 출처 수집
-- LLM 호출
-- Slack 발송
-- Hermes `/cron` 연결
-- GCP 배포
+- 실제 secret 값 입력
+- 사용자 GCP project로 실배포
+- Cloud SQL/Firestore 전환
+- Cloud Storage raw snapshot 전환
 - Notion 저장
 - TTS 생성
 - 이메일 발송
 
-## v2 Task 001 흐름
+## v2 Task 006 흐름
 
 ```mermaid
 flowchart LR
-  A[Schema] --> B[SQLite LLM Wiki]
-  B --> C[TrendItem 저장]
-  B --> D[Digest 저장]
-  B --> E[SourceEvidence 저장]
-  C --> F[날짜별 조회]
+  A[Secret Manager] --> B[AI Trend worker Cloud Run]
+  C[Cloud Scheduler 또는 Hermes] -->|OIDC + CRON_SECRET| B
+  B --> D[POST /cron]
+  D --> E[수집/랭킹/저장]
+  E --> F[Slack daily digest]
 ```
 
 ## 시간 기준
@@ -190,7 +195,7 @@ Legacy 또는 대체된 문서:
 
 초기 기획 문서는 `main` 브랜치에 직접 push했습니다.
 
-v2 Task 001부터는 기능 브랜치를 만들고 PR로 리뷰하는 흐름을 사용합니다.
+v2 Task 001 이후 작업은 기능 브랜치를 만들고 PR로 리뷰하는 흐름을 사용합니다.
 
 PR 작성 기준:
 

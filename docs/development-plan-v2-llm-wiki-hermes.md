@@ -171,6 +171,7 @@ LLM Wiki
 
 - Cloud Run 배포
 - Secret Manager 연동
+- AI Trend worker container와 Hermes agent container 권한 분리
 - Cloud SQL PostgreSQL 또는 Firestore 선택
 - Cloud Logging
 - Cloud Storage raw snapshot 저장
@@ -179,7 +180,9 @@ LLM Wiki
 완료 기준:
 
 - GCP에서 매일 `07:00 KST` digest가 Slack으로 발송된다.
-- Slack webhook과 LLM API key는 Secret Manager에서만 읽는다.
+- Slack webhook과 LLM API key는 Secret Manager에서만 읽고, worker만 해당 secret에 접근한다.
+- Hermes agent는 Docker/Cloud Run으로 격리되고 `CRON_SECRET` 또는 제한된 worker 호출 토큰만 보유한다.
+- Hermes agent는 학습/판단/정책 개선을 담당하지만, Slack webhook, DB write, GCP admin 권한은 직접 갖지 않는다.
 - 실패 로그를 Cloud Logging에서 확인할 수 있다.
 
 ## 11. Phase 7: 소셜 allow-list 확장

@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createCronHttpServer } from "./cron/cron-http-server.js";
+import { runHermesCron } from "./cron/run-hermes-cron.js";
 import type { DigestCandidate, DigestWithItems } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
@@ -23,10 +25,14 @@ interface CliOptions {
   sourceConfigPath: string;
   forceRefresh: boolean;
   forceSend: boolean;
+  dryRun: boolean;
+  send: boolean;
+  force: boolean;
   cacheRoot?: string;
   date?: string;
   limit: number;
   outPath?: string;
+  port: number;
 }
 
 interface CliDependencies {
@@ -74,6 +80,12 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
       break;
     case "slack:send":
       await sendSlack(options, dependencies);
+      break;
+    case "cron:run":
+      await runCron(options, dependencies);
+      break;
+    case "cron:serve":
+      await serveCron(options, dependencies);
       break;
     default:
       printUsageAndExit(command);
@@ -433,6 +445,100 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
   }
 }
 
+async function runCron(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const { db, store } = openStore(options.dbPath, env);
+
+  try {
+    store.initialize();
+    const result = await runHermesCron({
+      store,
+      sources,
+      mode: resolveCronMode(options, env),
+      limit: options.limit,
+      force: options.force,
+      forceRefresh: options.forceRefresh,
+      sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
+      ...(options.date === undefined ? {} : { reportDate: options.date }),
+      ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
+      ...(env.SLACK_WEBHOOK_URL === undefined ? {} : { webhookUrl: env.SLACK_WEBHOOK_URL }),
+      ...(dependencies.fetcher === undefined ? {} : { fetcher: dependencies.fetcher })
+    });
+
+    (dependencies.stdout ?? console.log)(JSON.stringify(toCronOutput(result), null, 2));
+    if (result.status !== "success") {
+      process.exitCode = 1;
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function serveCron(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  store.initialize();
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const server = createCronHttpServer({
+    env,
+    buildInput: (request) => {
+      return {
+        store,
+        sources,
+        mode: request.mode ?? resolveCronMode(options, env),
+        limit: options.limit,
+        force: request.force === true || options.force,
+        forceRefresh: options.forceRefresh,
+        sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
+        ...(request.reportDate === undefined ? {} : { reportDate: request.reportDate }),
+        ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
+        ...(env.SLACK_WEBHOOK_URL === undefined ? {} : { webhookUrl: env.SLACK_WEBHOOK_URL }),
+        ...(dependencies.fetcher === undefined ? {} : { fetcher: dependencies.fetcher })
+      };
+    }
+  });
+  server.on("close", () => db.close());
+
+  await new Promise<void>((resolveListen) => {
+    server.listen(options.port, () => {
+      (dependencies.stdout ?? console.log)(`Hermes cron server listening on port ${options.port}`);
+      resolveListen();
+    });
+  });
+}
+
+function resolveCronMode(options: CliOptions, env: Record<string, string | undefined>) {
+  if (options.dryRun && options.send) {
+    throw new Error("Choose only one cron mode: --dry-run or --send");
+  }
+  if (options.send) {
+    return "send";
+  }
+  if (options.dryRun) {
+    return "dry_run";
+  }
+  if (env.CRON_DEFAULT_MODE === "send") {
+    return "send";
+  }
+
+  return "dry_run";
+}
+
+function toCronOutput(result: Awaited<ReturnType<typeof runHermesCron>>) {
+  return {
+    reportDate: result.reportDate,
+    mode: result.mode,
+    status: result.status,
+    idempotencyKey: result.idempotencyKey,
+    cronRun: result.cronRun,
+    candidateCount: result.candidateCount,
+    slackAttemptId: result.slackAttempt?.id ?? null,
+    payload: result.payload,
+    errorMessage: result.errorMessage
+  };
+}
+
 function openStore(dbPath: string, env: Record<string, string | undefined> = process.env) {
   const resolvedDbPath = resolveProjectPath(dbPath, "SQLite database path", env);
   mkdirSync(dirname(resolvedDbPath), { recursive: true });
@@ -447,6 +553,10 @@ function parseOptions(args: string[]): CliOptions {
     sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
     forceRefresh: false,
     forceSend: false,
+    dryRun: false,
+    send: false,
+    force: false,
+    port: 3000,
     limit: 5
   };
 
@@ -461,12 +571,20 @@ function parseOptions(args: string[]): CliOptions {
       options.forceRefresh = true;
     } else if (arg === "--force-send") {
       options.forceSend = true;
+    } else if (arg === "--dry-run") {
+      options.dryRun = true;
+    } else if (arg === "--send") {
+      options.send = true;
+    } else if (arg === "--force") {
+      options.force = true;
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
     } else if (arg.startsWith("--limit=")) {
       options.limit = parsePositiveInteger(arg.slice("--limit=".length), "--limit");
     } else if (arg.startsWith("--out=")) {
       options.outPath = arg.slice("--out=".length);
+    } else if (arg.startsWith("--port=")) {
+      options.port = parsePositiveInteger(arg.slice("--port=".length), "--port");
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }

@@ -89,6 +89,17 @@ MVP에서 LLM Wiki는 "SQLite 기반 TrendItem + Digest 저장소"로 정의한�
 
 Hermes agent는 단순 요약기가 아니라 AI 트렌드 감시자이자 전달 관리자다.
 
+보안 모델:
+
+- Hermes agent는 Docker 또는 Cloud Run 같은 격리된 런타임에서 실행한다.
+- Hermes agent는 학습, 판단, 정책 개선, 실행 요청을 담당한다.
+- Slack webhook, DB write 권한, Secret Manager read 권한, GCP admin 권한은 Hermes agent에 직접 주지 않는다.
+- 강한 실행 권한과 secret 사용은 별도 worker가 담당한다.
+- Hermes agent가 보유할 수 있는 secret은 worker 호출용 `CRON_SECRET` 또는 제한된 호출 토큰으로 한정한다.
+- Hermes agent가 학습 메모리에 저장할 수 있는 데이터는 실행 결과, 피드백, 정책 메모 같은 비민감 데이터로 제한한다.
+- 원본 secret, full webhook URL, 민감한 로그, 사용자 인증 토큰은 학습 메모리에 저장하지 않는다.
+- 정해진 시간 AI 트렌드 알림이라는 목적은 유지한다. Hermes는 매일 `07:00 KST` 실행 판단과 worker 호출을 담당하고, worker가 실제 수집, 랭킹, Slack 전송을 수행한다.
+
 주요 책임:
 
 - `/cron`으로 정해진 시간에 실행된다.
@@ -133,6 +144,8 @@ MVP의 기본 알림 주기는 매일 아침 `07:00 KST` 1회 digest로 한다.
 권장 운영 방식:
 
 - 기본: 매일 아침 `07:00 KST` 1회 digest
+- 실행 방식: Hermes agent가 `/cron` 스케줄에 맞춰 worker의 `POST /cron` endpoint를 호출한다.
+- 전달 방식: worker가 최신 AI 트렌드를 수집, 랭킹, 요약한 뒤 Slack daily digest로 발송한다.
 - 선택 확장: 아침, 점심, 저녁 3회 digest
 - MVP 예외: 긴급성이 높은 공식 업데이트는 urgent alert 후보로 분리해 daily digest 상단에 표시
 - 이후 확장: urgent alert 후보를 즉시 Slack 알림으로 발송
@@ -368,13 +381,14 @@ MVP 이후에는 이 후보를 daily digest와 별개로 즉시 Slack 알림으�
 
 ## 11. GCP 운영 요구사항
 
-Hermes agent는 GCP 위에서 실행하는 것을 목표로 한다.
+Hermes agent와 AI Trend worker는 GCP 위에서 분리 실행하는 것을 목표로 한다.
 
 권장 구성:
 
-- Cloud Run: Hermes agent 실행 API 또는 worker
-- Hermes `/cron`: 정기 실행 트리거
-- Secret Manager: Slack webhook, LLM API key, 소셜 API token 관리
+- Cloud Run service 1: 저권한 Hermes agent container
+- Cloud Run service 2: AI Trend worker container
+- Hermes `/cron`: worker의 제한된 HTTP endpoint 호출
+- Secret Manager: Slack webhook, LLM API key, 소셜 API token 관리. worker만 필요한 secret을 읽는다.
 - Cloud SQL PostgreSQL 또는 Firestore: LLM Wiki 저장소
 - Cloud Storage: 원문 스냅샷, 긴 본문, 첨부 데이터 저장
 - Cloud Logging: 실행 로그, 실패 출처, 발송 결과 기록
@@ -382,13 +396,22 @@ Hermes agent는 GCP 위에서 실행하는 것을 목표로 한다.
 MVP 실행 경로:
 
 ```text
-Hermes /cron
--> Cloud Run HTTP endpoint
--> trend collection worker
+Hermes agent container
+-> scheduled 07:00 KST /cron
+-> POST /cron with CRON_SECRET
+-> AI Trend worker container
+-> AI trend ingestion/ranking/digest
 -> LLM Wiki 저장
 -> Slack Incoming Webhook 발송
 -> Cloud Logging 기록
 ```
+
+권한 분리:
+
+- Hermes agent container: `CRON_SECRET`, worker endpoint URL, 비민감 정책/피드백 메모리만 보유한다.
+- AI Trend worker container: Slack webhook, DB 접근 권한, ingestion/ranking/send 실행 권한을 보유한다.
+- Hermes agent가 손상되어도 Slack webhook과 DB write secret이 직접 노출되지 않도록 한다.
+- Worker endpoint는 허용된 명령만 제공하고, Hermes의 요청을 인증/검증한 뒤 side effect를 수행한다.
 
 실패 처리 책임:
 

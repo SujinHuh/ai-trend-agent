@@ -20,7 +20,9 @@
     "wiki:query": "node --import tsx src/cli.ts wiki:query",
     "wiki:index": "node --import tsx src/cli.ts wiki:index",
     "slack:preview": "node --import tsx src/cli.ts slack:preview",
-    "slack:send": "node --import tsx src/cli.ts slack:send"
+    "slack:send": "node --import tsx src/cli.ts slack:send",
+    "cron:run": "node --import tsx src/cli.ts cron:run",
+    "cron:serve": "node --import tsx src/cli.ts cron:serve"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.1"
