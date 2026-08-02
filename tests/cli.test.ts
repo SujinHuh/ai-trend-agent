@@ -4,11 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createLlmWikiStore } from "../src/db/llm-wiki-store.js";
 import { openSqliteDatabase } from "../src/db/sqlite.js";
+import type { SlackWebhookPayload } from "../src/domain/types.js";
 import { runCliCommand } from "../src/cli.js";
+import { createPayloadHash } from "../src/slack/slack-webhook.js";
 
 const execFileAsync = promisify(execFile);
 const originalAllowExternalPaths = process.env.AI_TREND_ALLOW_EXTERNAL_PATHS;
@@ -334,6 +336,286 @@ describe("CLI", () => {
       outPath: indexPath,
       itemCount: 1
     });
+  }, 30000);
+
+  it("previews Slack payload without a webhook URL", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const preview = await runCli("slack:preview", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--date=${reportDate}`,
+      "--limit=5"
+    ]);
+    const parsed = JSON.parse(preview.stdout) as {
+      mode: string;
+      candidateCount: number;
+      payload: { text: string };
+    };
+
+    expect(parsed).toMatchObject({
+      mode: "preview",
+      candidateCount: 1
+    });
+    expect(parsed.payload.text).toBe(`AI Trend Daily Digest - ${reportDate}`);
+  }, 30000);
+
+  it("does not use global fetch during Slack preview", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn(() => {
+      throw new Error("preview must not fetch");
+    });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      await runCliCommand([
+        "slack:preview",
+        `--config=${configPath}`,
+        `--db=${dbPath}`,
+        `--date=${reportDate}`,
+        "--limit=5"
+      ]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+      globalThis.fetch = originalFetch;
+    }
+  }, 30000);
+
+  it("refuses Slack send without SLACK_WEBHOOK_URL before network", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    await expect(
+      runCli("slack:send", [
+        `--config=${configPath}`,
+        `--db=${dbPath}`,
+        `--date=${reportDate}`,
+        "--limit=5"
+      ])
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("SLACK_WEBHOOK_URL")
+    });
+  }, 30000);
+
+  it("records a successful Slack delivery attempt through an injectable sender", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const stdout: string[] = [];
+    let payloadHash = "";
+    const sendSlackWebhook = vi.fn(async (input: { webhookUrl: string; payload: SlackWebhookPayload }) => {
+      expect(input.webhookUrl).toBe("https://hooks.slack.com/services/T000/B000/secret");
+      expect(input.payload.text).toBe(`AI Trend Daily Digest - ${reportDate}`);
+      payloadHash = createPayloadHash(JSON.stringify(input.payload));
+
+      return {
+        ok: true,
+        webhookHost: "hooks.slack.com",
+        httpStatusCode: 200,
+        errorMessage: null,
+        sentAt: "2026-08-02T00:00:00.000Z",
+        payloadHash
+      };
+    });
+
+    await runCliCommand(
+      ["slack:send", `--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5"],
+      {
+        env: {
+          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/T000/B000/secret"
+        },
+        sendSlackWebhook,
+        stdout: (value) => stdout.push(value)
+      }
+    );
+
+    expect(sendSlackWebhook).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(stdout[0] ?? "{}")).toMatchObject({
+      reportDate,
+      sent: true,
+      attempt: {
+        reportDate,
+        webhookHost: "hooks.slack.com",
+        status: "success",
+        httpStatusCode: 200,
+        errorMessage: null,
+        payloadHash
+      }
+    });
+
+    const db = openSqliteDatabase(dbPath);
+    const store = createLlmWikiStore(db);
+
+    try {
+      const attempts = store.listSlackDeliveryAttempts(reportDate);
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0]).toMatchObject({
+        reportDate,
+        webhookHost: "hooks.slack.com",
+        status: "success",
+        httpStatusCode: 200,
+        errorMessage: null,
+        payloadHash
+      });
+    } finally {
+      db.close();
+    }
+  }, 30000);
+
+  it("refuses to resend an identical successful Slack payload without --force-send", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const sendSlackWebhook = vi.fn(async (input: { webhookUrl: string; payload: SlackWebhookPayload }) => ({
+      ok: true,
+      webhookHost: "hooks.slack.com",
+      httpStatusCode: 200,
+      errorMessage: null,
+      sentAt: "2026-08-02T00:00:00.000Z",
+      payloadHash: createPayloadHash(JSON.stringify(input.payload))
+    }));
+    const dependencies = {
+      env: {
+        SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/T000/B000/secret"
+      },
+      sendSlackWebhook,
+      stdout: vi.fn()
+    };
+
+    await runCliCommand(
+      ["slack:send", `--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5"],
+      dependencies
+    );
+    await expect(
+      runCliCommand(
+        ["slack:send", `--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5"],
+        dependencies
+      )
+    ).rejects.toThrow("Slack digest already sent");
+
+    expect(sendSlackWebhook).toHaveBeenCalledTimes(1);
+  }, 30000);
+
+  it("allows an identical successful Slack payload when --force-send is explicit", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const sendSlackWebhook = vi.fn(async (input: { webhookUrl: string; payload: SlackWebhookPayload }) => ({
+      ok: true,
+      webhookHost: "hooks.slack.com",
+      httpStatusCode: 200,
+      errorMessage: null,
+      sentAt: `2026-08-02T00:00:0${sendSlackWebhook.mock.calls.length}.000Z`,
+      payloadHash: createPayloadHash(JSON.stringify(input.payload))
+    }));
+    const dependencies = {
+      env: {
+        SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/T000/B000/secret"
+      },
+      sendSlackWebhook,
+      stdout: vi.fn()
+    };
+
+    await runCliCommand(
+      ["slack:send", `--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5"],
+      dependencies
+    );
+    await runCliCommand(
+      [
+        "slack:send",
+        `--config=${configPath}`,
+        `--db=${dbPath}`,
+        `--date=${reportDate}`,
+        "--limit=5",
+        "--force-send"
+      ],
+      dependencies
+    );
+
+    expect(sendSlackWebhook).toHaveBeenCalledTimes(2);
+  }, 30000);
+
+  it("records a failed Slack delivery attempt for an invalid webhook URL without network", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    await expect(
+      runCli(
+        "slack:send",
+        [`--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5"],
+        {
+          SLACK_WEBHOOK_URL: "not-a-url"
+        }
+      )
+    ).rejects.toMatchObject({
+      stdout: expect.stringContaining("\"sent\": false"),
+      stderr: ""
+    });
+
+    const db = openSqliteDatabase(dbPath);
+    const store = createLlmWikiStore(db);
+
+    try {
+      const attempts = store.listSlackDeliveryAttempts(reportDate);
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0]).toMatchObject({
+        reportDate,
+        webhookHost: "invalid",
+        status: "failed",
+        httpStatusCode: null,
+        errorMessage: "SLACK_WEBHOOK_URL must be a valid URL"
+      });
+    } finally {
+      db.close();
+    }
   }, 30000);
 
 });

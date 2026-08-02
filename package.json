@@ -18,7 +18,9 @@
     "ingest:run": "node --import tsx src/cli.ts ingest:run",
     "digest:candidates": "node --import tsx src/cli.ts digest:candidates",
     "wiki:query": "node --import tsx src/cli.ts wiki:query",
-    "wiki:index": "node --import tsx src/cli.ts wiki:index"
+    "wiki:index": "node --import tsx src/cli.ts wiki:index",
+    "slack:preview": "node --import tsx src/cli.ts slack:preview",
+    "slack:send": "node --import tsx src/cli.ts slack:send"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.1"

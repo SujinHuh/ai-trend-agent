@@ -4,6 +4,8 @@ import type {
   Digest,
   DigestCandidate,
   DigestWithItems,
+  SlackDeliveryAttempt,
+  SlackDeliveryStatus,
   SourceEvidence,
   TrendAssessment,
   TrendAssessmentInput,
@@ -14,6 +16,7 @@ import type {
 import {
   createDigestId,
   createEvidenceId,
+  createSlackDeliveryAttemptId,
   createTrendAssessmentId,
   createTrendIdentity
 } from "../identity/stable-id.js";
@@ -73,6 +76,17 @@ interface TrendAssessmentLineageRow {
   confidence_score: number;
 }
 
+interface SlackDeliveryAttemptRow {
+  id: string;
+  report_date: string;
+  webhook_host: string;
+  status: SlackDeliveryStatus;
+  http_status_code: number | null;
+  error_message: string | null;
+  sent_at: string;
+  payload_hash: string;
+}
+
 export interface SaveTrendItemInput {
   sourceUrl: string;
   title: string;
@@ -116,6 +130,16 @@ export interface SaveTrendAssessmentInput {
   contradictionNotes?: string | null;
   stalenessPolicy: string;
   sourceEvidenceIds: string[];
+}
+
+export interface SaveSlackDeliveryAttemptInput {
+  reportDate: string;
+  webhookHost: string;
+  status: SlackDeliveryStatus;
+  httpStatusCode?: number | null;
+  errorMessage?: string | null;
+  sentAt: string;
+  payloadHash: string;
 }
 
 export class LlmWikiStore {
@@ -565,6 +589,119 @@ export class LlmWikiStore {
     return rows.map(mapTrendAssessmentLineage);
   }
 
+  saveSlackDeliveryAttempt(input: SaveSlackDeliveryAttemptInput): SlackDeliveryAttempt {
+    const id = createSlackDeliveryAttemptId({
+      reportDate: input.reportDate,
+      sentAt: input.sentAt,
+      payloadHash: input.payloadHash
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO slack_delivery_attempts (
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        id,
+        input.reportDate,
+        input.webhookHost,
+        input.status,
+        input.httpStatusCode ?? null,
+        input.errorMessage ?? null,
+        input.sentAt,
+        input.payloadHash
+      );
+
+    const attempt = this.getSlackDeliveryAttempt(id);
+    if (attempt === null) {
+      throw new Error(`SlackDeliveryAttempt was not saved: ${id}`);
+    }
+
+    return attempt;
+  }
+
+  getSlackDeliveryAttempt(id: string): SlackDeliveryAttempt | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE id = ?
+        `
+      )
+      .get(id) as SlackDeliveryAttemptRow | undefined;
+
+    return row === undefined ? null : mapSlackDeliveryAttempt(row);
+  }
+
+  listSlackDeliveryAttempts(reportDate: string): SlackDeliveryAttempt[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE report_date = ?
+          ORDER BY sent_at DESC, id ASC
+        `
+      )
+      .all(reportDate) as SlackDeliveryAttemptRow[];
+
+    return rows.map(mapSlackDeliveryAttempt);
+  }
+
+  findSuccessfulSlackDeliveryAttempt(reportDate: string, payloadHash: string): SlackDeliveryAttempt | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE report_date = ?
+            AND payload_hash = ?
+            AND status = 'success'
+          ORDER BY sent_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(reportDate, payloadHash) as SlackDeliveryAttemptRow | undefined;
+
+    return row === undefined ? null : mapSlackDeliveryAttempt(row);
+  }
+
   getDigestByReportDate(reportDate: string): DigestWithItems | null {
     const digest = this.getDigest(reportDate);
 
@@ -680,6 +817,19 @@ function mapTrendAssessmentLineage(row: TrendAssessmentLineageRow): TrendAssessm
     sourceName: row.source_name,
     sourceUrl: row.source_url,
     confidenceScore: row.confidence_score
+  };
+}
+
+function mapSlackDeliveryAttempt(row: SlackDeliveryAttemptRow): SlackDeliveryAttempt {
+  return {
+    id: row.id,
+    reportDate: row.report_date,
+    webhookHost: row.webhook_host,
+    status: row.status,
+    httpStatusCode: row.http_status_code,
+    errorMessage: row.error_message,
+    sentAt: row.sent_at,
+    payloadHash: row.payload_hash
   };
 }
 

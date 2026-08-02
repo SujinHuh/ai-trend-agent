@@ -94,6 +94,18 @@ export function initializeSchema(db: SqliteDatabase): void {
       FOREIGN KEY (source_evidence_id) REFERENCES source_evidence(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS slack_delivery_attempts (
+      id TEXT PRIMARY KEY,
+      report_date TEXT NOT NULL,
+      webhook_host TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('success', 'failed')),
+      http_status_code INTEGER,
+      error_message TEXT,
+      sent_at TEXT NOT NULL,
+      payload_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_digests_report_date ON digests(report_date);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_trend_item_id ON source_evidence(trend_item_id);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_fetched_at ON source_evidence(fetched_at);
@@ -107,6 +119,10 @@ export function initializeSchema(db: SqliteDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_trend_assessment_lineage_assessment_id ON trend_assessment_lineage(assessment_id);
     CREATE INDEX IF NOT EXISTS idx_trend_assessment_lineage_source_evidence_id
       ON trend_assessment_lineage(source_evidence_id);
+    CREATE INDEX IF NOT EXISTS idx_slack_delivery_attempts_report_date ON slack_delivery_attempts(report_date);
+    CREATE INDEX IF NOT EXISTS idx_slack_delivery_attempts_sent_at ON slack_delivery_attempts(sent_at);
+    CREATE INDEX IF NOT EXISTS idx_slack_delivery_attempts_duplicate_guard
+      ON slack_delivery_attempts(report_date, payload_hash, status);
   `);
-  db.pragma("user_version = 3");
+  db.pragma("user_version = 4");
 }

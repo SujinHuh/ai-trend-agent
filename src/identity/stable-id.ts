@@ -50,6 +50,15 @@ export function createTrendAssessmentId(input: { trendItemId: string; reportDate
   return `assessment_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createSlackDeliveryAttemptId(input: {
+  reportDate: string;
+  sentAt: string;
+  payloadHash: string;
+}): string {
+  const hash = sha256([input.reportDate, input.sentAt, input.payloadHash].join("|"));
+  return `slack_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

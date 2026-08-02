@@ -87,3 +87,42 @@ export interface DigestCandidate {
   trendItem: TrendItem;
   lineage: TrendAssessmentLineage[];
 }
+
+export type SlackDeliveryStatus = "success" | "failed";
+
+export interface SlackDeliveryAttempt {
+  id: string;
+  reportDate: string;
+  webhookHost: string;
+  status: SlackDeliveryStatus;
+  httpStatusCode: number | null;
+  errorMessage: string | null;
+  sentAt: string;
+  payloadHash: string;
+}
+
+export interface SlackTextObject {
+  type: "mrkdwn" | "plain_text";
+  text: string;
+}
+
+export interface SlackSectionBlock {
+  type: "section";
+  text: SlackTextObject;
+}
+
+export interface SlackDividerBlock {
+  type: "divider";
+}
+
+export interface SlackHeaderBlock {
+  type: "header";
+  text: SlackTextObject;
+}
+
+export type SlackBlock = SlackHeaderBlock | SlackSectionBlock | SlackDividerBlock;
+
+export interface SlackWebhookPayload {
+  text: string;
+  blocks: SlackBlock[];
+}

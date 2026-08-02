@@ -25,7 +25,8 @@ describe("SQLite schema", () => {
               'source_evidence',
               'digest_trend_items',
               'trend_assessments',
-              'trend_assessment_lineage'
+              'trend_assessment_lineage',
+              'slack_delivery_attempts'
             )
           ORDER BY name
         `
@@ -36,6 +37,7 @@ describe("SQLite schema", () => {
     expect(tables).toEqual([
       "digest_trend_items",
       "digests",
+      "slack_delivery_attempts",
       "source_evidence",
       "trend_assessment_lineage",
       "trend_assessments",
@@ -213,7 +215,10 @@ describe("SQLite schema", () => {
               'idx_digest_trend_items_trend_item_id',
               'idx_trend_assessments_report_date',
               'idx_trend_assessments_score',
-              'idx_trend_assessment_lineage_assessment_id'
+              'idx_trend_assessment_lineage_assessment_id',
+              'idx_slack_delivery_attempts_duplicate_guard',
+              'idx_slack_delivery_attempts_report_date',
+              'idx_slack_delivery_attempts_sent_at'
             )
           ORDER BY name
         `
@@ -224,13 +229,16 @@ describe("SQLite schema", () => {
     expect(indexes).toEqual([
       "idx_digest_trend_items_trend_item_id",
       "idx_digests_report_date",
+      "idx_slack_delivery_attempts_duplicate_guard",
+      "idx_slack_delivery_attempts_report_date",
+      "idx_slack_delivery_attempts_sent_at",
       "idx_source_evidence_fetched_at",
       "idx_source_evidence_trend_item_id",
       "idx_trend_assessment_lineage_assessment_id",
       "idx_trend_assessments_report_date",
       "idx_trend_assessments_score"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    expect(db.pragma("user_version", { simple: true })).toBe(4);
     db.close();
   });
 
@@ -270,7 +278,7 @@ describe("SQLite schema", () => {
           SELECT name
           FROM sqlite_master
           WHERE type = 'table'
-            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage')
+            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage', 'slack_delivery_attempts')
           ORDER BY name
         `
       )
@@ -278,12 +286,13 @@ describe("SQLite schema", () => {
       .all();
 
     expect(tables).toEqual([
+      "slack_delivery_attempts",
       "source_evidence",
       "trend_assessment_lineage",
       "trend_assessments",
       "trend_items"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    expect(db.pragma("user_version", { simple: true })).toBe(4);
     db.close();
   });
 
