@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 006 GCP Deployment Completion</title>
+    <style>
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17202a;
+        background: #f6f8fb;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 48px 20px;
+      }
+      .hero {
+        padding: 28px 0 24px;
+        border-bottom: 1px solid #d9e1ec;
+      }
+      h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+      p {
+        line-height: 1.65;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        padding: 18px;
+      }
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+      pre {
+        overflow: auto;
+        background: #101820;
+        color: #eef6ff;
+        border-radius: 8px;
+        padding: 16px;
+      }
+      li {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Task 006 GCP Deployment</h1>
+        <p>
+          Task 005 Hermes cron worker를 GCP 운영 환경에 올리기 위한 production build,
+          Docker image, Secret Manager, Cloud Run, Scheduler, smoke validation 산출물을 만들고
+          실제 private Cloud Run 배포까지 완료했습니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Built</h2>
+          <ul>
+            <li>production TypeScript build</li>
+            <li>AI Trend worker <code>Dockerfile</code></li>
+            <li>secure <code>.dockerignore</code></li>
+            <li>Secret Manager setup script</li>
+            <li>Cloud Run deploy script</li>
+            <li>Cloud Scheduler invocation script</li>
+            <li>deployment smoke script</li>
+            <li>Cloud Run security contract</li>
+            <li>private Cloud Run worker deployment</li>
+            <li>07:00 KST Cloud Scheduler job</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>npm run typecheck      passed
+npm run build          passed
+npm test               passed
+git diff --check       passed
+
+18 test files passed
+116 tests passed
+Docker build passed
+Docker runtime smoke passed</code></pre>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Security</h2>
+          <ul>
+            <li>Cloud Run uses <code>--no-allow-unauthenticated</code></li>
+            <li><code>NODE_ENV=production</code></li>
+            <li><code>CRON_REQUIRE_SECRET=true</code></li>
+            <li><code>CRON_ALLOW_FORCE</code> remains disabled</li>
+            <li>Worker and invoker service accounts are separated</li>
+            <li>Worker reads secrets from Secret Manager</li>
+            <li>Hermes/Scheduler does not receive Slack webhook access</li>
+            <li>No broad host folder mounts</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Docker Check</h2>
+          <pre><code>.env false
+.git false
+tests false
+docs/showcase false</code></pre>
+          <p>
+            Container dry-run succeeded from compiled JavaScript. SQLite/cache remain ephemeral until a durable GCP store is selected.
+          </p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Real Deployment</h2>
+        <pre><code>Project: project-7296a491-98d3-4b50-abe
+Region: asia-northeast3
+Service: ai-trend-worker
+URL: https://ai-trend-worker-edjrjtiwga-du.a.run.app
+Invoker: ai-trend-cron-invoker service account only
+Scheduler: ai-trend-daily-digest, 0 7 * * *, Asia/Seoul
+Unauthenticated /cron: 403
+Scheduler manual run: Cloud Run POST 200</code></pre>
+      </section>
+
+      <section class="card">
+        <h2>Next</h2>
+        <p>Task 006은 Cloud Scheduler를 첫 invoker로 사용해 배포됐습니다. Hermes Docker/Cloud Run 학습 에이전트는 다음 단계에서 낮은 권한으로 붙입니다.</p>
+        <ul>
+          <li>Slack 채널에서 수동 실행 알림 수신 여부를 확인합니다.</li>
+          <li>필요하면 SQLite/cache를 Cloud SQL, Firestore, Cloud Storage로 이전합니다.</li>
+          <li>다음 v2 구현 후보는 <strong>Task 007 Social allow-list expansion</strong>입니다.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
