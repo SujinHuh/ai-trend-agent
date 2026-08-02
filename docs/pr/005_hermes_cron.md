@@ -2,7 +2,7 @@
 
 ## 📌 변경 사항
 
-✅ PR 제목 : `Task 005: Hermes Cron Worker`
+✅ PR 제목 : `Task 005: Hermes Cron 작업자`
 
 - [x] 신규 기능 추가
 - [ ] 버그 수정
