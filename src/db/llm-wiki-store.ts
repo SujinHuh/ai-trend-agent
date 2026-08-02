@@ -1,6 +1,9 @@
 import type {
   ActionLevel,
   ConfirmationStatus,
+  CronRun,
+  CronRunMode,
+  CronRunStatus,
   Digest,
   DigestCandidate,
   DigestWithItems,
@@ -14,6 +17,7 @@ import type {
   TrendItem
 } from "../domain/types.js";
 import {
+  createCronRunId,
   createDigestId,
   createEvidenceId,
   createSlackDeliveryAttemptId,
@@ -87,6 +91,20 @@ interface SlackDeliveryAttemptRow {
   payload_hash: string;
 }
 
+interface CronRunRow {
+  id: string;
+  idempotency_key: string;
+  report_date: string;
+  mode: CronRunMode;
+  status: CronRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  step_name: string;
+  candidate_count: number | null;
+  slack_attempt_id: string | null;
+  error_message: string | null;
+}
+
 export interface SaveTrendItemInput {
   sourceUrl: string;
   title: string;
@@ -140,6 +158,22 @@ export interface SaveSlackDeliveryAttemptInput {
   errorMessage?: string | null;
   sentAt: string;
   payloadHash: string;
+}
+
+export interface CreateCronRunInput {
+  idempotencyKey: string;
+  reportDate: string;
+  mode: CronRunMode;
+  startedAt: string;
+  stepName: string;
+}
+
+export interface CompleteCronRunInput {
+  finishedAt: string;
+  stepName: string;
+  candidateCount?: number | null;
+  slackAttemptId?: string | null;
+  errorMessage?: string | null;
 }
 
 export class LlmWikiStore {
@@ -702,6 +736,188 @@ export class LlmWikiStore {
     return row === undefined ? null : mapSlackDeliveryAttempt(row);
   }
 
+  createCronRun(input: CreateCronRunInput): CronRun {
+    const id = createCronRunId({
+      idempotencyKey: input.idempotencyKey,
+      startedAt: input.startedAt
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO cron_runs (
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            step_name
+          )
+          VALUES (?, ?, ?, ?, 'running', ?, ?)
+        `
+      )
+      .run(id, input.idempotencyKey, input.reportDate, input.mode, input.startedAt, input.stepName);
+
+    const run = this.getCronRun(id);
+    if (run === null) {
+      throw new Error(`CronRun was not saved: ${id}`);
+    }
+
+    return run;
+  }
+
+  markCronRunSuccess(id: string, input: CompleteCronRunInput): CronRun {
+    return this.updateCronRun(id, "success", input);
+  }
+
+  markCronRunFailure(id: string, input: CompleteCronRunInput): CronRun {
+    return this.updateCronRun(id, "failed", input);
+  }
+
+  getCronRun(id: string): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE id = ?
+        `
+      )
+      .get(id) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  findSuccessfulCronRun(idempotencyKey: string, mode: CronRunMode = "send"): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE idempotency_key = ?
+            AND mode = ?
+            AND status = 'success'
+          ORDER BY finished_at DESC, started_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(idempotencyKey, mode) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  findRunningCronRun(idempotencyKey: string, mode: CronRunMode = "send"): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE idempotency_key = ?
+            AND mode = ?
+            AND status = 'running'
+          ORDER BY started_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(idempotencyKey, mode) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  listCronRuns(reportDate: string): CronRun[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE report_date = ?
+          ORDER BY started_at DESC, id ASC
+        `
+      )
+      .all(reportDate) as CronRunRow[];
+
+    return rows.map(mapCronRun);
+  }
+
+  private updateCronRun(id: string, status: CronRunStatus, input: CompleteCronRunInput): CronRun {
+    this.db
+      .prepare(
+        `
+          UPDATE cron_runs
+          SET
+            status = ?,
+            finished_at = ?,
+            step_name = ?,
+            candidate_count = ?,
+            slack_attempt_id = ?,
+            error_message = ?,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE id = ?
+        `
+      )
+      .run(
+        status,
+        input.finishedAt,
+        input.stepName,
+        input.candidateCount ?? null,
+        input.slackAttemptId ?? null,
+        input.errorMessage ?? null,
+        id
+      );
+
+    const run = this.getCronRun(id);
+    if (run === null) {
+      throw new Error(`CronRun was not found: ${id}`);
+    }
+
+    return run;
+  }
+
   getDigestByReportDate(reportDate: string): DigestWithItems | null {
     const digest = this.getDigest(reportDate);
 
@@ -833,6 +1049,21 @@ function mapSlackDeliveryAttempt(row: SlackDeliveryAttemptRow): SlackDeliveryAtt
   };
 }
 
+function mapCronRun(row: CronRunRow): CronRun {
+  return {
+    id: row.id,
+    idempotencyKey: row.idempotency_key,
+    reportDate: row.report_date,
+    mode: row.mode,
+    status: row.status,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    stepName: row.step_name,
+    candidateCount: row.candidate_count,
+    slackAttemptId: row.slack_attempt_id,
+    errorMessage: row.error_message
+  };
+}
 function getKstReportDateWindow(reportDate: string): { startUtc: string; endUtc: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
     throw new Error(`Invalid report date: ${reportDate}`);

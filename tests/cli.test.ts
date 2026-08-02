@@ -618,6 +618,38 @@ describe("CLI", () => {
     }
   }, 30000);
 
+  it("runs Hermes cron dry-run without a Slack webhook URL", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+    const stdout: string[] = [];
+
+    await runCliCommand(
+      [
+        "cron:run",
+        `--config=${configPath}`,
+        `--db=${dbPath}`,
+        `--cache-root=${cacheRoot}`,
+        `--date=${reportDate}`,
+        "--dry-run"
+      ],
+      {
+        stdout: (value) => stdout.push(value)
+      }
+    );
+    const parsed = JSON.parse(stdout[0] ?? "{}") as {
+      mode: string;
+      status: string;
+      candidateCount: number;
+      payload: { text: string };
+    };
+
+    expect(parsed).toMatchObject({
+      mode: "dry_run",
+      status: "success",
+      candidateCount: 1
+    });
+    expect(parsed.payload.text).toBe(`AI Trend Daily Digest - ${reportDate}`);
+  }, 30000);
+
 });
 
 async function prepareSingleCandidateFixture() {

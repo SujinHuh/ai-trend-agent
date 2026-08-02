@@ -59,6 +59,11 @@ export function createSlackDeliveryAttemptId(input: {
   return `slack_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createCronRunId(input: { idempotencyKey: string; startedAt: string }): string {
+  const hash = sha256([input.idempotencyKey, input.startedAt].join("|"));
+  return `cron_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

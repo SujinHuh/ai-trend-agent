@@ -1,0 +1,16 @@
+# Task 005 Steps
+
+1. [Branch and dependency](01_branch_and_dependency.md)
+2. [Task documents](02_task_documents.md)
+3. [Cron run domain types](03_cron_run_domain_types.md)
+4. [Cron run schema](04_cron_run_schema.md)
+5. [Store functions](05_store_functions.md)
+6. [Scheduled worker flow](06_scheduled_worker_flow.md)
+7. [Idempotency guard](07_idempotency_guard.md)
+8. [HTTP cron endpoint](08_http_cron_endpoint.md)
+9. [Cron CLI](09_cron_cli.md)
+10. [Env example](10_env_example.md)
+11. [Tests](11_tests.md)
+12. [Validation](12_validation.md)
+13. [Completion reports](13_completion_reports.md)
+14. [PR and next handoff](14_pr_and_next_handoff.md)

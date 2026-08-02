@@ -126,3 +126,20 @@ export interface SlackWebhookPayload {
   text: string;
   blocks: SlackBlock[];
 }
+
+export type CronRunMode = "dry_run" | "send";
+export type CronRunStatus = "running" | "success" | "failed";
+
+export interface CronRun {
+  id: string;
+  idempotencyKey: string;
+  reportDate: string;
+  mode: CronRunMode;
+  status: CronRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  stepName: string;
+  candidateCount: number | null;
+  slackAttemptId: string | null;
+  errorMessage: string | null;
+}

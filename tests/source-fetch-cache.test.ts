@@ -63,6 +63,23 @@ describe("source fetch/cache layer", () => {
     });
   });
 
+  it("rejects unsafe cache path segments", async () => {
+    expect(() =>
+      getSourceCachePath({
+        cacheRoot: "/tmp/cache",
+        reportDate: "2026-08-01",
+        sourceId: "../secret"
+      })
+    ).toThrow(/sourceId must contain only/);
+    expect(() =>
+      getSourceCachePath({
+        cacheRoot: "/tmp/cache",
+        reportDate: "../2026-08-01",
+        sourceId: "openai-news"
+      })
+    ).toThrow(/reportDate must contain only/);
+  });
+
   it("uses a fresh cache snapshot without calling the network", async () => {
     const cacheRoot = await createCacheRoot();
     const firstFetch = vi.fn<SourceFetcher>().mockResolvedValue({

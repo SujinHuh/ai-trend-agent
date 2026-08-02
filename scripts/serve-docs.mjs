@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 
 const root = resolve("docs");
 const port = Number(process.env.PORT ?? 4173);
@@ -20,7 +20,7 @@ const server = createServer((request, response) => {
   const requestedPath = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   const filePath = resolve(join(root, requestedPath));
 
-  if (!filePath.startsWith(root) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+  if (!isInside(root, filePath) || !existsSync(filePath) || !statSync(filePath).isFile()) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
     return;
@@ -31,6 +31,11 @@ const server = createServer((request, response) => {
   });
   createReadStream(filePath).pipe(response);
 });
+
+function isInside(rootPath, candidatePath) {
+  const relativePath = relative(rootPath, candidatePath);
+  return relativePath.length === 0 || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
 
 server.listen(port, host, () => {
   console.log(`Docs server running at http://${host}:${port}/showcase/001_llm_wiki_local_store/completion.html`);
