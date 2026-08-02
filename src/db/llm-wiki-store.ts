@@ -9,6 +9,9 @@ import type {
   DigestWithItems,
   SlackDeliveryAttempt,
   SlackDeliveryStatus,
+  SocialConfirmationStatus,
+  SocialPlatform,
+  SocialSignalItem,
   SourceEvidence,
   TrendAssessment,
   TrendAssessmentInput,
@@ -21,6 +24,7 @@ import {
   createDigestId,
   createEvidenceId,
   createSlackDeliveryAttemptId,
+  createSocialSignalId,
   createTrendAssessmentId,
   createTrendIdentity
 } from "../identity/stable-id.js";
@@ -105,6 +109,24 @@ interface CronRunRow {
   error_message: string | null;
 }
 
+interface SocialSignalItemRow {
+  id: string;
+  source_id: string;
+  platform: SocialPlatform;
+  author_handle: string | null;
+  author_display_name: string | null;
+  url: string;
+  canonical_url: string;
+  text: string;
+  published_at: string | null;
+  collected_at: string;
+  outbound_urls_json: string;
+  confirmation_status: SocialConfirmationStatus;
+  linked_official_evidence_ids_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SaveTrendItemInput {
   sourceUrl: string;
   title: string;
@@ -174,6 +196,21 @@ export interface CompleteCronRunInput {
   candidateCount?: number | null;
   slackAttemptId?: string | null;
   errorMessage?: string | null;
+}
+
+export interface SaveSocialSignalItemInput {
+  sourceId: string;
+  platform: SocialPlatform;
+  authorHandle?: string | null;
+  authorDisplayName?: string | null;
+  url: string;
+  canonicalUrl: string;
+  text: string;
+  publishedAt?: string | null;
+  collectedAt: string;
+  outboundUrls: string[];
+  confirmationStatus: SocialConfirmationStatus;
+  linkedOfficialEvidenceIds: string[];
 }
 
 export class LlmWikiStore {
@@ -736,6 +773,200 @@ export class LlmWikiStore {
     return row === undefined ? null : mapSlackDeliveryAttempt(row);
   }
 
+  saveSocialSignalItem(input: SaveSocialSignalItemInput): SocialSignalItem {
+    const id = createSocialSignalId({
+      sourceId: input.sourceId,
+      canonicalUrl: input.canonicalUrl,
+      publishedAt: input.publishedAt
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO social_signal_items (
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(source_id, canonical_url) DO UPDATE SET
+            author_handle = excluded.author_handle,
+            author_display_name = excluded.author_display_name,
+            text = excluded.text,
+            published_at = excluded.published_at,
+            collected_at = excluded.collected_at,
+            outbound_urls_json = excluded.outbound_urls_json,
+            confirmation_status = excluded.confirmation_status,
+            linked_official_evidence_ids_json = excluded.linked_official_evidence_ids_json,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        `
+      )
+      .run(
+        id,
+        input.sourceId,
+        input.platform,
+        input.authorHandle ?? null,
+        input.authorDisplayName ?? null,
+        input.url,
+        input.canonicalUrl,
+        input.text,
+        input.publishedAt ?? null,
+        input.collectedAt,
+        JSON.stringify(input.outboundUrls),
+        input.confirmationStatus,
+        JSON.stringify(input.linkedOfficialEvidenceIds)
+      );
+
+    const item = this.getSocialSignalItem(id) ?? this.getSocialSignalItemBySourceAndUrl(input.sourceId, input.canonicalUrl);
+    if (item === null) {
+      throw new Error(`SocialSignalItem was not saved: ${id}`);
+    }
+
+    return item;
+  }
+
+  saveSocialSignalItems(inputs: SaveSocialSignalItemInput[]): SocialSignalItem[] {
+    const saveMany = this.db.transaction((items: SaveSocialSignalItemInput[]) =>
+      items.map((item) => this.saveSocialSignalItem(item))
+    );
+    return saveMany(inputs);
+  }
+
+  getSocialSignalItem(id: string): SocialSignalItem | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json,
+            created_at,
+            updated_at
+          FROM social_signal_items
+          WHERE id = ?
+        `
+      )
+      .get(id) as SocialSignalItemRow | undefined;
+
+    return row === undefined ? null : mapSocialSignalItem(row);
+  }
+
+  getSocialSignalItemBySourceAndUrl(sourceId: string, canonicalUrl: string): SocialSignalItem | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json,
+            created_at,
+            updated_at
+          FROM social_signal_items
+          WHERE source_id = ?
+            AND canonical_url = ?
+        `
+      )
+      .get(sourceId, canonicalUrl) as SocialSignalItemRow | undefined;
+
+    return row === undefined ? null : mapSocialSignalItem(row);
+  }
+
+  listSocialSignalItems(sourceId?: string): SocialSignalItem[] {
+    const baseSelect = `
+      SELECT
+        id,
+        source_id,
+        platform,
+        author_handle,
+        author_display_name,
+        url,
+        canonical_url,
+        text,
+        published_at,
+        collected_at,
+        outbound_urls_json,
+        confirmation_status,
+        linked_official_evidence_ids_json,
+        created_at,
+        updated_at
+      FROM social_signal_items
+    `;
+    const rows =
+      sourceId === undefined
+        ? (this.db
+            .prepare(`${baseSelect} ORDER BY collected_at DESC, id ASC`)
+            .all() as SocialSignalItemRow[])
+        : (this.db
+            .prepare(`${baseSelect} WHERE source_id = ? ORDER BY collected_at DESC, id ASC`)
+            .all(sourceId) as SocialSignalItemRow[]);
+
+    return rows.map(mapSocialSignalItem);
+  }
+
+  findSourceEvidenceByCanonicalUrls(canonicalUrls: string[]): SourceEvidence[] {
+    if (canonicalUrls.length === 0) {
+      return [];
+    }
+    const uniqueUrls = new Set(canonicalUrls.map(canonicalizeUrl));
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            trend_item_id,
+            source_url,
+            source_name,
+            fetched_at,
+            evidence_excerpt,
+            confidence_score
+          FROM source_evidence
+        `
+      )
+      .all() as SourceEvidenceRow[];
+
+    return rows.map(mapSourceEvidence).filter((evidence) => uniqueUrls.has(canonicalizeUrl(evidence.sourceUrl)));
+  }
+
+  countSocialSignalsLinkedToEvidence(sourceEvidenceIds: string[]): number {
+    if (sourceEvidenceIds.length === 0) {
+      return 0;
+    }
+    const ids = new Set(sourceEvidenceIds);
+    return this.listSocialSignalItems().filter((item) =>
+      item.linkedOfficialEvidenceIds.some((evidenceId) => ids.has(evidenceId))
+    ).length;
+  }
+
   createCronRun(input: CreateCronRunInput): CronRun {
     const id = createCronRunId({
       idempotencyKey: input.idempotencyKey,
@@ -1064,6 +1295,39 @@ function mapCronRun(row: CronRunRow): CronRun {
     errorMessage: row.error_message
   };
 }
+
+function mapSocialSignalItem(row: SocialSignalItemRow): SocialSignalItem {
+  return {
+    id: row.id,
+    sourceId: row.source_id,
+    platform: row.platform,
+    authorHandle: row.author_handle,
+    authorDisplayName: row.author_display_name,
+    url: row.url,
+    canonicalUrl: row.canonical_url,
+    text: row.text,
+    publishedAt: row.published_at,
+    collectedAt: row.collected_at,
+    outboundUrls: parseStringArray(row.outbound_urls_json, "outbound_urls_json"),
+    confirmationStatus: row.confirmation_status,
+    linkedOfficialEvidenceIds: parseStringArray(
+      row.linked_official_evidence_ids_json,
+      "linked_official_evidence_ids_json"
+    ),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function parseStringArray(value: string, label: string): string[] {
+  const parsed = JSON.parse(value) as unknown;
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+    throw new Error(`social_signal_items data drift: ${label} must be a string array`);
+  }
+
+  return parsed;
+}
+
 function getKstReportDateWindow(reportDate: string): { startUtc: string; endUtc: string } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
     throw new Error(`Invalid report date: ${reportDate}`);

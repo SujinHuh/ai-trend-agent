@@ -38,6 +38,8 @@ interface SocialSignalSource {
   subreddits?: string[];
   keywords?: string[];
   officialDomainsToConfirm?: string[];
+  policyReviewedAt?: string;
+  policyNotes?: string;
   rateLimit: {
     maxRequestsPerWindow: number;
     windowSeconds: number;
@@ -75,6 +77,8 @@ interface SocialSignalItem {
 3. Browser scraping that bypasses login, robots, or platform controls is out of scope.
 4. deleted/private content must not be retained from unofficial exports.
 5. social item text must be clearly labeled as unconfirmed in downstream digest logic.
+6. manual imports must include a public URL, source provenance, and no deleted/private/screenshot/private chat markers.
+7. confidence promotion must match existing canonical `SourceEvidence` or an explicit official domain registry entry.
 
 ## Acceptance Criteria
 
@@ -84,3 +88,4 @@ interface SocialSignalItem {
 - Reddit/HN can be tested through fixtures before live runs.
 - every social item defaults to `needs_confirmation`.
 - official source matching is required for confidence promotion.
+- X/Threads collectors remain deferred until token scopes, current rate limits, and app review constraints are recorded.

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { createCronHttpServer } from "./cron/cron-http-server.js";
 import { runHermesCron } from "./cron/run-hermes-cron.js";
-import type { DigestCandidate, DigestWithItems } from "./domain/types.js";
+import type { DigestCandidate, DigestWithItems, SocialSignalItem } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
 import { resolveProjectPath } from "./security/path-scope.js";
@@ -16,6 +16,11 @@ import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js"
 import { renderSlackDigest } from "./slack/render-slack-digest.js";
 import { buildSlackDigest, sendSlackDigest, type SlackWebhookSender } from "./slack/send-slack-digest.js";
 import { sendSlackWebhook as defaultSendSlackWebhook } from "./slack/slack-webhook.js";
+import { importManualSocialSignals } from "./social/manual-import.js";
+import {
+  DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
+  loadSocialSignalSources
+} from "./social/social-source-config.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
@@ -23,6 +28,9 @@ const DEFAULT_SAMPLE_DATE = "2026-07-29";
 interface CliOptions {
   dbPath: string;
   sourceConfigPath: string;
+  socialConfigPath: string;
+  socialImportPath?: string;
+  socialSourceId?: string;
   forceRefresh: boolean;
   forceSend: boolean;
   dryRun: boolean;
@@ -87,8 +95,101 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
     case "cron:serve":
       await serveCron(options, dependencies);
       break;
+    case "social:validate":
+      validateSocialSources(options);
+      break;
+    case "social:import":
+      importSocialSignals(options);
+      break;
+    case "social:list":
+      listSocialSignals(options);
+      break;
     default:
       printUsageAndExit(command);
+  }
+}
+
+function validateSocialSources(options: CliOptions): void {
+  const socialConfigPath = resolveProjectPath(options.socialConfigPath, "social source config path");
+  const sources = loadSocialSignalSources(socialConfigPath, { includeDisabled: true });
+  const enabledSources = sources.filter((source) => source.enabled);
+
+  console.log(
+    JSON.stringify(
+      {
+        configPath: socialConfigPath,
+        sourceCount: sources.length,
+        enabledSourceCount: enabledSources.length,
+        enabledSourceIds: enabledSources.map((source) => source.id),
+        deferredSourceIds: sources
+          .filter((source) => source.platform === "x" || source.platform === "threads")
+          .map((source) => source.id)
+      },
+      null,
+      2
+    )
+  );
+}
+
+function importSocialSignals(options: CliOptions): void {
+  if (options.socialImportPath === undefined) {
+    throw new Error("Missing required option: --input=PATH");
+  }
+  if (options.socialSourceId === undefined) {
+    throw new Error("Missing required option: --source-id=ID");
+  }
+
+  const sources = loadSocialSignalSources(resolveProjectPath(options.socialConfigPath, "social source config path"), {
+    includeDisabled: true
+  });
+  const source = sources.find((candidate) => candidate.id === options.socialSourceId);
+  if (source === undefined) {
+    throw new Error(`Unknown social source id: ${options.socialSourceId}`);
+  }
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const result = importManualSocialSignals({
+      source,
+      store,
+      jsonlPath: resolveProjectPath(options.socialImportPath, "social import path")
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          sourceId: result.sourceId,
+          importedCount: result.importedCount,
+          items: result.items.map(formatSocialSignalItem)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function listSocialSignals(options: CliOptions): void {
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const items = store.listSocialSignalItems(options.socialSourceId);
+    console.log(
+      JSON.stringify(
+        {
+          itemCount: items.length,
+          items: items.map(formatSocialSignalItem)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
   }
 }
 
@@ -551,6 +652,7 @@ function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = {
     dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
     sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
+    socialConfigPath: process.env.SOCIAL_SOURCE_CONFIG_PATH ?? DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
     forceRefresh: false,
     forceSend: false,
     dryRun: false,
@@ -567,6 +669,12 @@ function parseOptions(args: string[]): CliOptions {
       options.dbPath = arg.slice("--db=".length);
     } else if (arg.startsWith("--config=")) {
       options.sourceConfigPath = arg.slice("--config=".length);
+    } else if (arg.startsWith("--social-config=")) {
+      options.socialConfigPath = arg.slice("--social-config=".length);
+    } else if (arg.startsWith("--source-id=")) {
+      options.socialSourceId = arg.slice("--source-id=".length);
+    } else if (arg.startsWith("--input=")) {
+      options.socialImportPath = arg.slice("--input=".length);
     } else if (arg === "--force-refresh") {
       options.forceRefresh = true;
     } else if (arg === "--force-send") {
@@ -591,6 +699,23 @@ function parseOptions(args: string[]): CliOptions {
   }
 
   return options;
+}
+
+function formatSocialSignalItem(item: SocialSignalItem) {
+  return {
+    id: item.id,
+    sourceId: item.sourceId,
+    platform: item.platform,
+    authorHandle: item.authorHandle,
+    url: item.url,
+    canonicalUrl: item.canonicalUrl,
+    text: item.text,
+    publishedAt: item.publishedAt,
+    collectedAt: item.collectedAt,
+    outboundUrls: item.outboundUrls,
+    confirmationStatus: item.confirmationStatus,
+    linkedOfficialEvidenceIds: item.linkedOfficialEvidenceIds
+  };
 }
 
 function formatDigest(digest: DigestWithItems) {
@@ -691,9 +816,15 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run wiki:index -- --date=YYYY-MM-DD --out=docs/wiki/index.md",
       "  npm run slack:preview -- --date=YYYY-MM-DD --limit=5",
       "  npm run slack:send -- --date=YYYY-MM-DD --limit=5",
+      "  npm run social:validate",
+      "  npm run social:import -- --source-id=manual-public-ai-links --input=PATH",
+      "  npm run social:list",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",
+      "  --social-config=PATH Override the social source registry config path",
+      "  --source-id=ID     Select a social source id",
+      "  --input=PATH       Input path for social:import",
       "  --cache-root=PATH  Override the source cache root",
       "  --force-refresh    Bypass source cache",
       "  --force-send       Allow slack:send to resend an identical successful payload",

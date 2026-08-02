@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 007 Social Allow-List Completion</title>
+    <style>
+      body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c2430; background: #f7f9fc; }
+      main { max-width: 1040px; margin: 0 auto; padding: 48px 20px; }
+      .hero { padding: 28px 0 24px; border-bottom: 1px solid #d9e1ec; }
+      h1 { margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: 0; }
+      h2 { margin: 0 0 14px; font-size: 22px; letter-spacing: 0; }
+      p, li { line-height: 1.65; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 22px; }
+      .card { background: #fff; border: 1px solid #d9e1ec; border-radius: 8px; padding: 18px; }
+      code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+      pre { overflow: auto; background: #101820; color: #eef6ff; border-radius: 8px; padding: 16px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Task 007 Social Allow-List</h1>
+        <p>빠른 AI 소셜/커뮤니티 신호를 안전하게 수집하되, 공식 확인 전에는 사실로 승격하지 않는 기반을 구현했습니다.</p>
+      </section>
+      <section class="grid">
+        <div class="card">
+          <h2>Built</h2>
+          <ul>
+            <li>disabled-by-default social registry</li>
+            <li>manual public JSONL importer</li>
+            <li>Hacker News fixture normalizer</li>
+            <li>Reddit RSS fixture normalizer</li>
+            <li>SQLite social signal storage</li>
+            <li>official evidence matching</li>
+            <li>capped ranking velocity boost</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Safety</h2>
+          <ul>
+            <li>social-only signals stay <code>needs_confirmation</code></li>
+            <li>private/deleted/screenshot/chat imports are rejected</li>
+            <li>X/Threads live collectors are deferred</li>
+            <li>social velocity does not raise confidence</li>
+            <li>manual imports are atomic</li>
+            <li>allowed official subdomains can match evidence</li>
+          </ul>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Validation</h2>
+        <pre><code>npm run typecheck passed
+npm run build passed
+focused tests passed: 5 files, 37 tests
+full test suite passed: 20 files, 127 tests
+git diff --check passed</code></pre>
+      </section>
+      <section class="card">
+        <h2>Next</h2>
+        <p>Default next v2 task is Task 008 domain expansion. Live X/Threads collectors and HN/Reddit polling are tracked separately as 007B after token, rate-limit, and platform-policy confirmation.</p>
+      </section>
+    </main>
+  </body>
+</html>

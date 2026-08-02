@@ -8,6 +8,9 @@ export function initializeSchema(db: SqliteDatabase): void {
   if (sqliteObjectExists(db, "table", "cron_runs")) {
     assertCronRunsSchema(db);
   }
+  if (sqliteObjectExists(db, "table", "social_signal_items")) {
+    assertSocialSignalItemsSchema(db);
+  }
   try {
     db.exec(`
     CREATE TABLE IF NOT EXISTS trend_items (
@@ -129,6 +132,33 @@ export function initializeSchema(db: SqliteDatabase): void {
 	      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 	      FOREIGN KEY (slack_attempt_id) REFERENCES slack_delivery_attempts(id) ON DELETE SET NULL
 	    );
+
+	    CREATE TABLE IF NOT EXISTS social_signal_items (
+	      id TEXT PRIMARY KEY,
+	      source_id TEXT NOT NULL,
+	      platform TEXT NOT NULL CHECK (platform IN ('x', 'threads', 'reddit', 'hacker_news', 'newsletter', 'manual')),
+	      author_handle TEXT,
+	      author_display_name TEXT,
+	      url TEXT NOT NULL,
+	      canonical_url TEXT NOT NULL,
+	      text TEXT NOT NULL,
+	      published_at TEXT,
+	      collected_at TEXT NOT NULL,
+	      outbound_urls_json TEXT NOT NULL,
+	      confirmation_status TEXT NOT NULL CHECK (
+	        confirmation_status IN (
+	          'needs_confirmation',
+	          'confirmed_by_official_link',
+	          'multi_signal_unconfirmed',
+	          'contradicted'
+	        )
+	      ),
+	      linked_official_evidence_ids_json TEXT NOT NULL,
+	      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+	      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+	      UNIQUE (source_id, canonical_url)
+	    );
+
     CREATE INDEX IF NOT EXISTS idx_digests_report_date ON digests(report_date);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_trend_item_id ON source_evidence(trend_item_id);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_fetched_at ON source_evidence(fetched_at);
@@ -150,13 +180,19 @@ export function initializeSchema(db: SqliteDatabase): void {
 	      ON cron_runs(idempotency_key, mode)
 	      WHERE mode = 'send' AND status = 'running';
 	    CREATE INDEX IF NOT EXISTS idx_cron_runs_report_date ON cron_runs(report_date);
-	    CREATE INDEX IF NOT EXISTS idx_cron_runs_started_at ON cron_runs(started_at);	    `);
+	    CREATE INDEX IF NOT EXISTS idx_cron_runs_started_at ON cron_runs(started_at);
+	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_source_id ON social_signal_items(source_id);
+	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_platform ON social_signal_items(platform);
+	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_confirmation_status ON social_signal_items(confirmation_status);
+	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_published_at ON social_signal_items(published_at);
+	    `);
   } catch (error) {
     throwSlackSchemaDriftError(error);
   }
   assertSlackDeliveryAttemptsSchema(db);
   assertCronRunsSchema(db);
-  db.pragma("user_version = 5");
+  assertSocialSignalItemsSchema(db);
+  db.pragma("user_version = 6");
 }
 
 function sqliteObjectExists(db: SqliteDatabase, type: string, name: string): boolean {
@@ -191,9 +227,71 @@ function isKnownSchemaDriftError(message: string): boolean {
     message.includes("idempotency_key") ||
     message.includes("sent_at") ||
     message.includes("report_date") ||
-    message.includes("active_send_claim")
+    message.includes("active_send_claim") ||
+    message.includes("social_signal_items") ||
+    message.includes("outbound_urls_json") ||
+    message.includes("linked_official_evidence_ids_json")
   );
 }
+
+function assertSocialSignalItemsSchema(db: SqliteDatabase): void {
+  const columns = db
+    .prepare("PRAGMA table_info(social_signal_items)")
+    .all() as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    pk: number;
+  }>;
+
+  const expectedColumns = new Map([
+    ["id", { type: "TEXT", notnull: false, pk: true }],
+    ["source_id", { type: "TEXT", notnull: true, pk: false }],
+    ["platform", { type: "TEXT", notnull: true, pk: false }],
+    ["author_handle", { type: "TEXT", notnull: false, pk: false }],
+    ["author_display_name", { type: "TEXT", notnull: false, pk: false }],
+    ["url", { type: "TEXT", notnull: true, pk: false }],
+    ["canonical_url", { type: "TEXT", notnull: true, pk: false }],
+    ["text", { type: "TEXT", notnull: true, pk: false }],
+    ["published_at", { type: "TEXT", notnull: false, pk: false }],
+    ["collected_at", { type: "TEXT", notnull: true, pk: false }],
+    ["outbound_urls_json", { type: "TEXT", notnull: true, pk: false }],
+    ["confirmation_status", { type: "TEXT", notnull: true, pk: false }],
+    ["linked_official_evidence_ids_json", { type: "TEXT", notnull: true, pk: false }],
+    ["created_at", { type: "TEXT", notnull: true, pk: false }],
+    ["updated_at", { type: "TEXT", notnull: true, pk: false }]
+  ]);
+
+  for (const [name, expected] of expectedColumns) {
+    const column = columns.find((candidate) => candidate.name === name);
+    if (!column) {
+      throw new Error(`social_signal_items schema drift: missing column ${name}`);
+    }
+    if (column.type.toUpperCase() !== expected.type) {
+      throw new Error(`social_signal_items schema drift: column ${name} type is ${column.type}, expected ${expected.type}`);
+    }
+    if (Boolean(column.notnull) !== expected.notnull) {
+      throw new Error(
+        `social_signal_items schema drift: column ${name} notnull is ${column.notnull}, expected ${
+          expected.notnull ? 1 : 0
+        }`
+      );
+    }
+    if (Boolean(column.pk) !== expected.pk) {
+      throw new Error(
+        `social_signal_items schema drift: column ${name} primary key is ${column.pk}, expected ${expected.pk ? 1 : 0}`
+      );
+    }
+  }
+
+  if (columns.length !== expectedColumns.size) {
+    throw new Error(`social_signal_items schema drift: expected ${expectedColumns.size} columns, found ${columns.length}`);
+  }
+
+  assertIndexColumns(db, "idx_social_signal_items_source_id", ["source_id"]);
+  assertIndexColumns(db, "idx_social_signal_items_confirmation_status", ["confirmation_status"]);
+}
+
 function assertSlackDeliveryAttemptsSchema(db: SqliteDatabase): void {
   const columns = db
     .prepare("PRAGMA table_info(slack_delivery_attempts)")

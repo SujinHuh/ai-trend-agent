@@ -650,6 +650,73 @@ describe("CLI", () => {
     expect(parsed.payload.text).toBe(`AI Trend Daily Digest - ${reportDate}`);
   }, 30000);
 
+  it("validates social sources, imports manual public JSONL, and lists social signals", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "social-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const socialConfigPath = join(tempDir, "social.json");
+    const inputPath = join(tempDir, "manual.jsonl");
+
+    writeFileSync(
+      socialConfigPath,
+      JSON.stringify([
+        {
+          id: "manual-public-ai-links",
+          platform: "manual",
+          displayName: "Manual public AI links",
+          credibility: "trusted_individual",
+          collectionMethod: "manual_export",
+          enabled: false,
+          defaultConfirmationStatus: "needs_confirmation",
+          handles: [],
+          accountIds: [],
+          subreddits: [],
+          keywords: ["ai"],
+          officialDomainsToConfirm: ["openai.com"],
+          rateLimit: { maxRequestsPerWindow: 1, windowSeconds: 60 },
+          security: { requiresToken: false },
+          policyReviewedAt: "2026-08-02",
+          policyNotes: "public links only"
+        }
+      ])
+    );
+    writeFileSync(
+      inputPath,
+      JSON.stringify({
+        sourceId: "manual-public-ai-links",
+        url: "https://example.com/public-ai-signal",
+        text: "Public AI signal https://openai.com/news/example",
+        provenance: "public export"
+      })
+    );
+
+    const validation = await runCli("social:validate", [`--social-config=${socialConfigPath}`]);
+    expect(JSON.parse(validation.stdout)).toMatchObject({
+      sourceCount: 1,
+      enabledSourceCount: 0
+    });
+
+    const imported = await runCli("social:import", [
+      `--db=${dbPath}`,
+      `--social-config=${socialConfigPath}`,
+      "--source-id=manual-public-ai-links",
+      `--input=${inputPath}`
+    ]);
+    expect(JSON.parse(imported.stdout)).toMatchObject({
+      sourceId: "manual-public-ai-links",
+      importedCount: 1
+    });
+
+    const listed = await runCli("social:list", [`--db=${dbPath}`]);
+    expect(JSON.parse(listed.stdout)).toMatchObject({
+      itemCount: 1,
+      items: [
+        {
+          sourceId: "manual-public-ai-links",
+          confirmationStatus: "needs_confirmation"
+        }
+      ]
+    });
+  }, 30000);
 });
 
 async function prepareSingleCandidateFixture() {

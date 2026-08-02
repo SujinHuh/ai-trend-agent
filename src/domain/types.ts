@@ -143,3 +143,55 @@ export interface CronRun {
   slackAttemptId: string | null;
   errorMessage: string | null;
 }
+
+export type SocialPlatform = "x" | "threads" | "reddit" | "hacker_news" | "newsletter" | "manual";
+export type SocialCredibility = "trusted_individual" | "official_social" | "community";
+export type SocialCollectionMethod = "api" | "rss" | "manual_export" | "html_if_allowed";
+export type SocialConfirmationStatus =
+  | "needs_confirmation"
+  | "confirmed_by_official_link"
+  | "multi_signal_unconfirmed"
+  | "contradicted";
+
+export interface SocialSignalSource {
+  id: string;
+  platform: SocialPlatform;
+  displayName: string;
+  credibility: SocialCredibility;
+  collectionMethod: SocialCollectionMethod;
+  enabled: boolean;
+  defaultConfirmationStatus: "needs_confirmation";
+  handles: string[];
+  accountIds: string[];
+  subreddits: string[];
+  keywords: string[];
+  officialDomainsToConfirm: string[];
+  policyReviewedAt: string | null;
+  policyNotes: string | null;
+  rateLimit: {
+    maxRequestsPerWindow: number;
+    windowSeconds: number;
+  };
+  security: {
+    requiresToken: boolean;
+    secretEnvName: string | null;
+  };
+}
+
+export interface SocialSignalItem {
+  id: string;
+  sourceId: string;
+  platform: SocialPlatform;
+  authorHandle: string | null;
+  authorDisplayName: string | null;
+  url: string;
+  canonicalUrl: string;
+  text: string;
+  publishedAt: string | null;
+  collectedAt: string;
+  outboundUrls: string[];
+  confirmationStatus: SocialConfirmationStatus;
+  linkedOfficialEvidenceIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
