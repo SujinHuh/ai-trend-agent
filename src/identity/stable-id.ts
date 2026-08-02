@@ -64,6 +64,11 @@ export function createCronRunId(input: { idempotencyKey: string; startedAt: stri
   return `cron_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createSocialSignalId(input: { sourceId: string; canonicalUrl: string; publishedAt?: string | null | undefined }): string {
+  const hash = sha256([input.sourceId, input.canonicalUrl, input.publishedAt ?? ""].join("|"));
+  return `social_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

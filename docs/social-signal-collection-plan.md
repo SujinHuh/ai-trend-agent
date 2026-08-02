@@ -104,7 +104,7 @@ https://www.reddit.com/r/ClaudeAI/new/.rss
       "name": "Kimi / Moonshot AI",
       "platform": "x",
       "handle": "Kimi_Moonshot",
-      "credibility": "official_aggregated",
+      "credibility": "official_social",
       "enabled": false,
       "priority": 90,
       "defaultStatus": "needs_confirmation"
@@ -113,7 +113,7 @@ https://www.reddit.com/r/ClaudeAI/new/.rss
   "communitySources": [
     {
       "id": "reddit-local-llama",
-      "platform": "reddit_rss",
+      "platform": "reddit",
       "url": "https://www.reddit.com/r/LocalLLaMA/new/.rss",
       "credibility": "community",
       "enabled": false,
@@ -132,6 +132,8 @@ https://www.reddit.com/r/ClaudeAI/new/.rss
 5. rate limit 초과 시 source-level failure로 기록하고 전체 run은 계속한다.
 6. social signal은 Slack digest에서 confirmed fact처럼 쓰지 않는다.
 7. 사용자가 직접 제공한 링크/export는 source lineage에 `manual_input`으로 기록한다.
+8. confidence promotion은 기존 canonical `SourceEvidence` 또는 명시적인 official domain registry 매칭으로만 허용한다.
+9. manual export는 public URL/provenance가 없거나 deleted/private/screenshot/private chat marker가 있으면 거부한다.
 
 ## Task 007 Handoff
 
