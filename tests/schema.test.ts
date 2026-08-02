@@ -19,7 +19,14 @@ describe("SQLite schema", () => {
           SELECT name
           FROM sqlite_master
           WHERE type = 'table'
-            AND name IN ('trend_items', 'digests', 'source_evidence', 'digest_trend_items')
+            AND name IN (
+              'trend_items',
+              'digests',
+              'source_evidence',
+              'digest_trend_items',
+              'trend_assessments',
+              'trend_assessment_lineage'
+            )
           ORDER BY name
         `
       )
@@ -30,6 +37,8 @@ describe("SQLite schema", () => {
       "digest_trend_items",
       "digests",
       "source_evidence",
+      "trend_assessment_lineage",
+      "trend_assessments",
       "trend_items"
     ]);
     db.close();
@@ -201,7 +210,10 @@ describe("SQLite schema", () => {
               'idx_digests_report_date',
               'idx_source_evidence_trend_item_id',
               'idx_source_evidence_fetched_at',
-              'idx_digest_trend_items_trend_item_id'
+              'idx_digest_trend_items_trend_item_id',
+              'idx_trend_assessments_report_date',
+              'idx_trend_assessments_score',
+              'idx_trend_assessment_lineage_assessment_id'
             )
           ORDER BY name
         `
@@ -213,8 +225,204 @@ describe("SQLite schema", () => {
       "idx_digest_trend_items_trend_item_id",
       "idx_digests_report_date",
       "idx_source_evidence_fetched_at",
-      "idx_source_evidence_trend_item_id"
+      "idx_source_evidence_trend_item_id",
+      "idx_trend_assessment_lineage_assessment_id",
+      "idx_trend_assessments_report_date",
+      "idx_trend_assessments_score"
     ]);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    db.close();
+  });
+
+  it("upgrades a pre-Task-003 database with additive assessment tables", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.pragma("foreign_keys = ON");
+    db.exec(`
+      CREATE TABLE trend_items (
+        id TEXT PRIMARY KEY,
+        canonical_url TEXT NOT NULL UNIQUE,
+        canonical_hash TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        source_name TEXT NOT NULL,
+        published_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+
+      CREATE TABLE source_evidence (
+        id TEXT PRIMARY KEY,
+        trend_item_id TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        source_name TEXT NOT NULL,
+        fetched_at TEXT NOT NULL,
+        evidence_excerpt TEXT,
+        confidence_score REAL NOT NULL CHECK (confidence_score >= 0 AND confidence_score <= 1),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        FOREIGN KEY (trend_item_id) REFERENCES trend_items(id) ON DELETE CASCADE
+      );
+    `);
+
+    initializeSchema(db);
+
+    const tables = db
+      .prepare(
+        `
+          SELECT name
+          FROM sqlite_master
+          WHERE type = 'table'
+            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage')
+          ORDER BY name
+        `
+      )
+      .pluck()
+      .all();
+
+    expect(tables).toEqual([
+      "source_evidence",
+      "trend_assessment_lineage",
+      "trend_assessments",
+      "trend_items"
+    ]);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    db.close();
+  });
+
+  it("stores trend assessments and source lineage with constraints", () => {
+    const db = openTestDatabase();
+
+    db.prepare(
+      `
+        INSERT INTO trend_items (
+          id,
+          canonical_url,
+          canonical_hash,
+          title,
+          source_name,
+          published_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      "trend_one",
+      "https://example.com/news",
+      "hash_one",
+      "Example",
+      "Example Source",
+      "2026-07-31T16:00:00.000Z"
+    );
+
+    db.prepare(
+      `
+        INSERT INTO source_evidence (
+          id,
+          trend_item_id,
+          source_url,
+          source_name,
+          fetched_at,
+          evidence_excerpt,
+          confidence_score
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      "evidence_one",
+      "trend_one",
+      "https://example.com/news",
+      "Example Source",
+      "2026-08-01T00:00:00.000Z",
+      "Example excerpt",
+      0.8
+    );
+
+    db.prepare(
+      `
+        INSERT INTO trend_assessments (
+          id,
+          trend_item_id,
+          report_date,
+          summary,
+          why_it_matters,
+          practical_impact,
+          trend_category,
+          action_level,
+          confirmation_status,
+          confidence,
+          importance_score,
+          staleness_policy
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      "assessment_one",
+      "trend_one",
+      "2026-08-01",
+      "Summary",
+      "Why",
+      "Impact",
+      "model",
+      "do_next",
+      "official_only",
+      0.85,
+      72,
+      "Recheck later"
+    );
+
+    db.prepare(
+      `
+        INSERT INTO trend_assessment_lineage (
+          assessment_id,
+          source_evidence_id,
+          source_name,
+          source_url,
+          confidence_score
+        )
+        VALUES (?, ?, ?, ?, ?)
+      `
+    ).run(
+      "assessment_one",
+      "evidence_one",
+      "Example Source",
+      "https://example.com/news",
+      0.8
+    );
+
+    expect(() =>
+      db
+        .prepare(
+          `
+            INSERT INTO trend_assessments (
+              id,
+              trend_item_id,
+              report_date,
+              summary,
+              why_it_matters,
+              practical_impact,
+              trend_category,
+              action_level,
+              confirmation_status,
+              confidence,
+              importance_score,
+              staleness_policy
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `
+        )
+        .run(
+          "bad_assessment",
+          "trend_one",
+          "2026-08-02",
+          "Summary",
+          "Why",
+          "Impact",
+          "unknown",
+          "do_next",
+          "official_only",
+          0.85,
+          72,
+          "Recheck later"
+        )
+    ).toThrow(/CHECK constraint failed/);
+
     db.close();
   });
 });

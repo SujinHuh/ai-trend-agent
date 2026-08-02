@@ -161,4 +161,138 @@ describe("LlmWikiStore", () => {
     expect(db.prepare("SELECT COUNT(*) FROM source_evidence").pluck().get()).toBe(2);
     db.close();
   });
+
+  it("saves trend assessments idempotently and preserves source lineage", () => {
+    const { db, store } = openInitializedStore();
+
+    const trendItem = store.saveTrendItem({
+      sourceUrl: "https://example.com/model-release",
+      title: "Example model release",
+      sourceName: "Example Source",
+      publishedAt: "2026-07-31T16:00:00.000Z"
+    });
+    const evidence = store.saveSourceEvidence({
+      trendItemId: trendItem.id,
+      sourceUrl: "https://example.com/model-release",
+      sourceName: "Example Source",
+      fetchedAt: "2026-08-01T00:00:00.000Z",
+      evidenceExcerpt: "Example released a model API update.",
+      confidenceScore: 0.85
+    });
+
+    const first = store.saveTrendAssessment({
+      trendItemId: trendItem.id,
+      reportDate: "2026-08-01",
+      summary: "Initial summary",
+      whyItMatters: "Initial why",
+      practicalImpact: "Initial impact",
+      trendCategory: "model",
+      actionLevel: "do_next",
+      confirmationStatus: "official_only",
+      confidence: 0.85,
+      importanceScore: 72,
+      stalenessPolicy: "Recheck later",
+      sourceEvidenceIds: [evidence.id]
+    });
+    const second = store.saveTrendAssessment({
+      trendItemId: trendItem.id,
+      reportDate: "2026-08-01",
+      summary: "Updated summary",
+      whyItMatters: "Updated why",
+      practicalImpact: "Updated impact",
+      trendCategory: "model",
+      actionLevel: "do_now",
+      confirmationStatus: "official_only",
+      confidence: 0.9,
+      importanceScore: 85,
+      stalenessPolicy: "Recheck later",
+      sourceEvidenceIds: [evidence.id]
+    });
+
+    expect(second.id).toBe(first.id);
+    expect(second.summary).toBe("Updated summary");
+    expect(db.prepare("SELECT COUNT(*) FROM trend_assessments").pluck().get()).toBe(1);
+    expect(store.listDigestCandidates("2026-08-01", 5)).toMatchObject([
+      {
+        assessment: {
+          id: first.id,
+          importanceScore: 85
+        },
+        trendItem: {
+          id: trendItem.id
+        },
+        lineage: [
+          {
+            sourceEvidenceId: evidence.id,
+            sourceUrl: "https://example.com/model-release"
+          }
+        ]
+      }
+    ]);
+
+    db.close();
+  });
+
+  it("fails when assessment lineage references missing SourceEvidence", () => {
+    const { db, store } = openInitializedStore();
+
+    const trendItem = store.saveTrendItem({
+      sourceUrl: "https://example.com/missing-lineage",
+      title: "Missing lineage",
+      sourceName: "Example Source",
+      publishedAt: "2026-07-31T16:00:00.000Z"
+    });
+
+    expect(() =>
+      store.saveTrendAssessment({
+        trendItemId: trendItem.id,
+        reportDate: "2026-08-01",
+        summary: "Summary",
+        whyItMatters: "Why",
+        practicalImpact: "Impact",
+        trendCategory: "product",
+        actionLevel: "watch_later",
+        confirmationStatus: "official_only",
+        confidence: 0.85,
+        importanceScore: 50,
+        stalenessPolicy: "Recheck later",
+        sourceEvidenceIds: ["missing_evidence"]
+      })
+    ).toThrow(/Missing SourceEvidence/);
+
+    db.close();
+  });
+
+  it("lists assessment inputs inside the KST report date window", () => {
+    const { db, store } = openInitializedStore();
+
+    const included = store.saveTrendItem({
+      sourceUrl: "https://example.com/included",
+      title: "Included",
+      sourceName: "Example Source",
+      publishedAt: "2026-07-31T16:00:00.000Z"
+    });
+    store.saveTrendItem({
+      sourceUrl: "https://example.com/excluded",
+      title: "Excluded",
+      sourceName: "Example Source",
+      publishedAt: "2026-07-31T14:59:59.000Z"
+    });
+    store.saveSourceEvidence({
+      trendItemId: included.id,
+      sourceUrl: "https://example.com/included",
+      sourceName: "Example Source",
+      fetchedAt: "2026-08-01T00:00:00.000Z",
+      evidenceExcerpt: "Included evidence.",
+      confidenceScore: 0.8
+    });
+
+    const inputs = store.listTrendAssessmentInputsForReportDate("2026-08-01");
+
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0]?.trendItem.id).toBe(included.id);
+    expect(inputs[0]?.evidence).toHaveLength(1);
+    db.close();
+  });
+
 });

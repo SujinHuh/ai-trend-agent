@@ -45,6 +45,11 @@ export function createEvidenceId(input: {
   return `evidence_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createTrendAssessmentId(input: { trendItemId: string; reportDate: string }): string {
+  const hash = sha256([input.reportDate, input.trendItemId].join("|"));
+  return `assessment_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

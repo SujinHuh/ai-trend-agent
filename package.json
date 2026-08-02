@@ -15,7 +15,10 @@
     "sample:seed": "node --import tsx src/cli.ts sample:seed",
     "digest:get": "node --import tsx src/cli.ts digest:get",
     "sources:validate": "node --import tsx src/cli.ts sources:validate",
-    "ingest:run": "node --import tsx src/cli.ts ingest:run"
+    "ingest:run": "node --import tsx src/cli.ts ingest:run",
+    "digest:candidates": "node --import tsx src/cli.ts digest:candidates",
+    "wiki:query": "node --import tsx src/cli.ts wiki:query",
+    "wiki:index": "node --import tsx src/cli.ts wiki:index"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.1"
