@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { assertSafePathSegment } from "../security/path-scope.js";
+
 const DEFAULT_CACHE_ROOT = ".cache/sources";
 const DEFAULT_CACHE_TTL_MINUTES = 24 * 60;
 const DEFAULT_RETRY_COUNT = 0;
@@ -201,6 +203,8 @@ export function getSourceCachePath(input: {
   reportDate: string;
   sourceId: string;
 }): string {
+  assertSafePathSegment(input.reportDate, "reportDate");
+  assertSafePathSegment(input.sourceId, "sourceId");
   return join(input.cacheRoot ?? DEFAULT_CACHE_ROOT, input.reportDate, `${input.sourceId}.json`);
 }
 

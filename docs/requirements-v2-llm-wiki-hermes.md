@@ -89,6 +89,17 @@ MVP에서 LLM Wiki는 "SQLite 기반 TrendItem + Digest 저장소"로 정의한�
 
 Hermes agent는 단순 요약기가 아니라 AI 트렌드 감시자이자 전달 관리자다.
 
+보안 모델:
+
+- Hermes agent는 Docker 또는 Cloud Run 같은 격리된 런타임에서 실행한다.
+- Hermes agent는 학습, 판단, 정책 개선, 실행 요청을 담당한다.
+- Slack webhook, DB write 권한, Secret Manager read 권한, GCP admin 권한은 Hermes agent에 직접 주지 않는다.
+- 강한 실행 권한과 secret 사용은 별도 worker가 담당한다.
+- Hermes agent가 보유할 수 있는 secret은 worker 호출용 `CRON_SECRET` 또는 제한된 호출 토큰으로 한정한다.
+- Hermes agent가 학습 메모리에 저장할 수 있는 데이터는 실행 결과, 피드백, 정책 메모 같은 비민감 데이터로 제한한다.
+- 원본 secret, full webhook URL, 민감한 로그, 사용자 인증 토큰은 학습 메모리에 저장하지 않는다.
+- 정해진 시간 AI 트렌드 알림이라는 목적은 유지한다. Hermes는 매일 `07:00 KST` 실행 판단과 worker 호출을 담당하고, worker가 실제 수집, 랭킹, Slack 전송을 수행한다.
+
 주요 책임:
 
 - `/cron`으로 정해진 시간에 실행된다.
@@ -99,6 +110,41 @@ Hermes agent는 단순 요약기가 아니라 AI 트렌드 감시자이자 전�
 - LLM Wiki에 저장할 상세 요약을 만든다.
 - Slack에 보낼 짧은 digest를 만든다.
 - 실패한 출처와 확인 필요한 항목을 숨기지 않고 표시한다.
+
+### 4.2.1 LLM 판단과 토큰 사용 경계
+
+매일 `07:00 KST` AI Trend Slack digest의 최종 목표는 단순 링크 목록이 아니라, 사용자가 바로 읽을 수 있는 요약과 판단이다.
+
+LLM이 필요한 작업:
+
+- 원문 또는 excerpt를 읽고 짧은 `summary`를 만든다.
+- 해당 변화가 왜 중요한지 `whyItMatters`를 작성한다.
+- 코드, 도구 선택, 비용, 학습, 제품 판단에 주는 `practicalImpact`를 작성한다.
+- 중요도, 긴급도, 신뢰도, action level을 판단한다.
+- 사용자의 관심 태그와 과거 피드백을 기준으로 digest 후보를 재정렬한다.
+- Hermes agent가 실행 결과와 비민감 피드백을 학습해 다음 정책을 개선한다.
+
+LLM이 필요하지 않은 작업:
+
+- RSS, HTML, GitHub release, HN/Reddit feed 같은 공개 출처 fetch
+- parser 기반 title, URL, date, excerpt 추출
+- canonical URL 중복 제거
+- source registry validation
+- DB 저장
+- Slack Incoming Webhook 발송
+- Cloud Scheduler 또는 Hermes의 `/cron` 호출
+
+따라서 크롤링과 Slack 발송만으로는 LLM token 비용이 거의 들지 않는다. 하지만 사람이 읽기 좋은 요약, "왜 중요한지", 개인 관심사 기반 재정렬을 사용하려면 LLM API token 비용이 발생한다.
+
+운영 원칙:
+
+- 모든 수집 항목을 LLM에 넣지 않는다.
+- 먼저 deterministic ranking으로 후보를 줄인다.
+- 기본 LLM 대상은 상위 5-10개 digest 후보로 제한한다.
+- 항목별 원문 전체 대신 title, excerpt, source metadata, canonical URL, 기존 LLM Wiki context를 우선 사용한다.
+- full article LLM 요약은 중요도 높은 항목이나 excerpt가 부족한 항목에만 선택적으로 사용한다.
+- `cron_runs` 또는 별도 cost log에 `llmInputTokens`, `llmOutputTokens`, `estimatedCostUsd`를 기록한다.
+- LLM prompt와 response에는 raw Slack webhook, `CRON_SECRET`, OAuth token, 개인 인증 정보가 절대 들어가지 않아야 한다.
 
 ### 4.3 Slack Delivery
 
@@ -133,6 +179,8 @@ MVP의 기본 알림 주기는 매일 아침 `07:00 KST` 1회 digest로 한다.
 권장 운영 방식:
 
 - 기본: 매일 아침 `07:00 KST` 1회 digest
+- 실행 방식: Hermes agent가 `/cron` 스케줄에 맞춰 worker의 `POST /cron` endpoint를 호출한다.
+- 전달 방식: worker가 최신 AI 트렌드를 수집, 랭킹, 요약한 뒤 Slack daily digest로 발송한다.
 - 선택 확장: 아침, 점심, 저녁 3회 digest
 - MVP 예외: 긴급성이 높은 공식 업데이트는 urgent alert 후보로 분리해 daily digest 상단에 표시
 - 이후 확장: urgent alert 후보를 즉시 Slack 알림으로 발송
@@ -368,13 +416,14 @@ MVP 이후에는 이 후보를 daily digest와 별개로 즉시 Slack 알림으�
 
 ## 11. GCP 운영 요구사항
 
-Hermes agent는 GCP 위에서 실행하는 것을 목표로 한다.
+Hermes agent와 AI Trend worker는 GCP 위에서 분리 실행하는 것을 목표로 한다.
 
 권장 구성:
 
-- Cloud Run: Hermes agent 실행 API 또는 worker
-- Hermes `/cron`: 정기 실행 트리거
-- Secret Manager: Slack webhook, LLM API key, 소셜 API token 관리
+- Cloud Run service 1: 저권한 Hermes agent container
+- Cloud Run service 2: AI Trend worker container
+- Hermes `/cron`: worker의 제한된 HTTP endpoint 호출
+- Secret Manager: Slack webhook, LLM API key, 소셜 API token 관리. worker만 필요한 secret을 읽는다.
 - Cloud SQL PostgreSQL 또는 Firestore: LLM Wiki 저장소
 - Cloud Storage: 원문 스냅샷, 긴 본문, 첨부 데이터 저장
 - Cloud Logging: 실행 로그, 실패 출처, 발송 결과 기록
@@ -382,13 +431,22 @@ Hermes agent는 GCP 위에서 실행하는 것을 목표로 한다.
 MVP 실행 경로:
 
 ```text
-Hermes /cron
--> Cloud Run HTTP endpoint
--> trend collection worker
+Hermes agent container
+-> scheduled 07:00 KST /cron
+-> POST /cron with CRON_SECRET
+-> AI Trend worker container
+-> AI trend ingestion/ranking/digest
 -> LLM Wiki 저장
 -> Slack Incoming Webhook 발송
 -> Cloud Logging 기록
 ```
+
+권한 분리:
+
+- Hermes agent container: `CRON_SECRET`, worker endpoint URL, 비민감 정책/피드백 메모리만 보유한다.
+- AI Trend worker container: Slack webhook, DB 접근 권한, ingestion/ranking/send 실행 권한을 보유한다.
+- Hermes agent가 손상되어도 Slack webhook과 DB write secret이 직접 노출되지 않도록 한다.
+- Worker endpoint는 허용된 명령만 제공하고, Hermes의 요청을 인증/검증한 뒤 side effect를 수행한다.
 
 실패 처리 책임:
 
@@ -412,11 +470,12 @@ Hermes /cron
 - arXiv 또는 GitHub release 중 1개 이상
 - 코드 기반 검증
 - canonical URL 중복 제거
-- LLM 요약
+- LLM 요약, 중요도 판단, `whyItMatters`, `practicalImpact`, 사용자 관심사 기반 재정렬
 - LLM Wiki 저장
 - Hermes `/cron` 실행 설계
 - Slack Incoming Webhook 발송
 - 실패 로그
+- LLM token 사용량과 추정 비용 기록
 - 알림 모드 설정값
 - urgent alert 후보 분리
 - AI Trend 도메인 우선 구조

@@ -87,3 +87,111 @@ export interface DigestCandidate {
   trendItem: TrendItem;
   lineage: TrendAssessmentLineage[];
 }
+
+export type SlackDeliveryStatus = "success" | "failed";
+
+export interface SlackDeliveryAttempt {
+  id: string;
+  reportDate: string;
+  webhookHost: string;
+  status: SlackDeliveryStatus;
+  httpStatusCode: number | null;
+  errorMessage: string | null;
+  sentAt: string;
+  payloadHash: string;
+}
+
+export interface SlackTextObject {
+  type: "mrkdwn" | "plain_text";
+  text: string;
+}
+
+export interface SlackSectionBlock {
+  type: "section";
+  text: SlackTextObject;
+}
+
+export interface SlackDividerBlock {
+  type: "divider";
+}
+
+export interface SlackHeaderBlock {
+  type: "header";
+  text: SlackTextObject;
+}
+
+export type SlackBlock = SlackHeaderBlock | SlackSectionBlock | SlackDividerBlock;
+
+export interface SlackWebhookPayload {
+  text: string;
+  blocks: SlackBlock[];
+}
+
+export type CronRunMode = "dry_run" | "send";
+export type CronRunStatus = "running" | "success" | "failed";
+
+export interface CronRun {
+  id: string;
+  idempotencyKey: string;
+  reportDate: string;
+  mode: CronRunMode;
+  status: CronRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  stepName: string;
+  candidateCount: number | null;
+  slackAttemptId: string | null;
+  errorMessage: string | null;
+}
+
+export type SocialPlatform = "x" | "threads" | "reddit" | "hacker_news" | "newsletter" | "manual";
+export type SocialCredibility = "trusted_individual" | "official_social" | "community";
+export type SocialCollectionMethod = "api" | "rss" | "manual_export" | "html_if_allowed";
+export type SocialConfirmationStatus =
+  | "needs_confirmation"
+  | "confirmed_by_official_link"
+  | "multi_signal_unconfirmed"
+  | "contradicted";
+
+export interface SocialSignalSource {
+  id: string;
+  platform: SocialPlatform;
+  displayName: string;
+  credibility: SocialCredibility;
+  collectionMethod: SocialCollectionMethod;
+  enabled: boolean;
+  defaultConfirmationStatus: "needs_confirmation";
+  handles: string[];
+  accountIds: string[];
+  subreddits: string[];
+  keywords: string[];
+  officialDomainsToConfirm: string[];
+  policyReviewedAt: string | null;
+  policyNotes: string | null;
+  rateLimit: {
+    maxRequestsPerWindow: number;
+    windowSeconds: number;
+  };
+  security: {
+    requiresToken: boolean;
+    secretEnvName: string | null;
+  };
+}
+
+export interface SocialSignalItem {
+  id: string;
+  sourceId: string;
+  platform: SocialPlatform;
+  authorHandle: string | null;
+  authorDisplayName: string | null;
+  url: string;
+  canonicalUrl: string;
+  text: string;
+  publishedAt: string | null;
+  collectedAt: string;
+  outboundUrls: string[];
+  confirmationStatus: SocialConfirmationStatus;
+  linkedOfficialEvidenceIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}

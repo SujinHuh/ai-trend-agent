@@ -106,10 +106,13 @@ LLM Wiki
 - LLM 요약
 - `whyItMatters` 생성
 - `practicalImpact` 생성
+- 중요도와 긴급도에 대한 LLM 판단
+- 사용자 관심 태그와 과거 피드백 기반 재정렬
 - tag와 domain 부여
 - confidence score 계산
 - importance score 계산
 - urgent alert 후보 분리
+- LLM token 사용량과 추정 비용 기록
 
 완료 기준:
 
@@ -117,6 +120,8 @@ LLM Wiki
 - 기본 domain은 `ai`다.
 - urgent alert 후보는 별도 목록으로 분리된다.
 - LLM이 원문에 없는 내용을 확정적으로 쓰지 않도록 프롬프트와 검증 규칙을 둔다.
+- 상위 5-10개 후보만 기본 LLM 요약 대상으로 삼아 daily token 비용을 제한한다.
+- 매 실행마다 input/output token과 추정 비용이 기록된다.
 
 ## 8. Phase 4: Slack 수동 발송
 
@@ -171,6 +176,7 @@ LLM Wiki
 
 - Cloud Run 배포
 - Secret Manager 연동
+- AI Trend worker container와 Hermes agent container 권한 분리
 - Cloud SQL PostgreSQL 또는 Firestore 선택
 - Cloud Logging
 - Cloud Storage raw snapshot 저장
@@ -179,7 +185,9 @@ LLM Wiki
 완료 기준:
 
 - GCP에서 매일 `07:00 KST` digest가 Slack으로 발송된다.
-- Slack webhook과 LLM API key는 Secret Manager에서만 읽는다.
+- Slack webhook과 LLM API key는 Secret Manager에서만 읽고, worker만 해당 secret에 접근한다.
+- Hermes agent는 Docker/Cloud Run으로 격리되고 `CRON_SECRET` 또는 제한된 worker 호출 토큰만 보유한다.
+- Hermes agent는 학습/판단/정책 개선을 담당하지만, Slack webhook, DB write, GCP admin 권한은 직접 갖지 않는다.
 - 실패 로그를 Cloud Logging에서 확인할 수 있다.
 
 ## 11. Phase 7: 소셜 allow-list 확장

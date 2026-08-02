@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 005 Hermes Cron Completion</title>
+    <style>
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17202a;
+        background: #f6f8fb;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 48px 20px;
+      }
+      .hero {
+        padding: 28px 0 24px;
+        border-bottom: 1px solid #d9e1ec;
+      }
+      h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+      p {
+        line-height: 1.65;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        padding: 18px;
+      }
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+      pre {
+        overflow: auto;
+        background: #101820;
+        color: #eef6ff;
+        border-radius: 8px;
+        padding: 16px;
+      }
+      li {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Task 005 Hermes Cron</h1>
+        <p>
+          Hermes 호환 <code>POST /cron</code> 실행 경로를 추가하고, daily digest 흐름을
+          dry-run/send 모드로 안전하게 실행할 수 있게 만들었습니다.
+          방향성은 정해진 시간에 AI 트렌드를 Slack으로 알려주는 것입니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Built</h2>
+          <ul>
+            <li><code>cron_runs</code> audit table</li>
+            <li><code>runHermesCron</code> worker</li>
+            <li><code>POST /cron</code> endpoint</li>
+            <li><code>cron:run</code>, <code>cron:serve</code></li>
+            <li>active send claim and idempotency guard</li>
+            <li>production-required cron secret guard</li>
+            <li>project-scoped DB/config/cache/output paths</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>git diff --check       passed
+npm run typecheck      passed
+npm test               passed
+
+17 full-suite files passed
+108 full-suite tests passed
+7 related files passed
+67 related tests passed</code></pre>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Safety</h2>
+          <ul>
+            <li>default mode is <code>dry_run</code></li>
+            <li>send mode requires explicit request</li>
+            <li>missing webhook fails before network</li>
+            <li>dry-runs do not block later sends</li>
+            <li>duplicate successful sends are idempotency guarded</li>
+            <li>concurrent send claims are DB guarded</li>
+            <li>HTTP response output is minimized and redacted</li>
+            <li>HTTP force bypass is disabled unless <code>CRON_ALLOW_FORCE=true</code></li>
+            <li>external filesystem paths are blocked by default</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Security Re-review</h2>
+          <pre><code>High risks fixed:
+- cron auth fail-open
+- response overexposure
+
+Medium risks fixed:
+- active claim raw DB error
+- body size missing
+- HTTP force bypass
+- cron_runs drift check
+- path scope gaps</code></pre>
+          <p>
+            dry-run은 webhook 없이 성공했습니다. send mode는 webhook이 없어서 네트워크 전 안전하게 실패했습니다.
+          </p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Next</h2>
+        <p>다음 v2 구현 단계는 <strong>Task 006 GCP 배포</strong>입니다.</p>
+        <ul>
+          <li>Hermes agent는 별도 Docker/Cloud Run container로 격리합니다.</li>
+          <li>Hermes는 <code>CRON_SECRET</code> 같은 제한된 worker 호출 권한만 보유합니다.</li>
+          <li>Slack webhook, DB write, Secret Manager 접근은 AI Trend worker에만 둡니다.</li>
+          <li>Hermes 학습 메모리에는 실행 결과와 정책 메모만 저장하고 raw secret은 저장하지 않습니다.</li>
+          <li>매일 <code>07:00 KST</code> AI 트렌드 Slack digest를 유지합니다.</li>
+          <li>006에서는 Cloud Run worker, Secret Manager, IAM/OIDC 또는 <code>CRON_SECRET</code> 보호를 필수로 구현합니다.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

@@ -295,4 +295,110 @@ describe("LlmWikiStore", () => {
     db.close();
   });
 
+  it("saves and lists Slack delivery attempts without storing webhook URLs", () => {
+    const { db, store } = openInitializedStore();
+
+    const attempt = store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      sentAt: "2026-08-01T00:00:00.000Z",
+      payloadHash: "hash"
+    });
+
+    expect(attempt).toMatchObject({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      errorMessage: null,
+      payloadHash: "hash"
+    });
+    expect(store.listSlackDeliveryAttempts("2026-08-01")).toEqual([attempt]);
+    expect(JSON.stringify(attempt)).not.toContain("https://hooks.slack.com");
+    db.close();
+  });
+
+  it("finds only successful Slack delivery attempts by report date and payload hash", () => {
+    const { db, store } = openInitializedStore();
+
+    store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "failed",
+      httpStatusCode: 500,
+      errorMessage: "server error",
+      sentAt: "2026-08-01T00:00:00.000Z",
+      payloadHash: "same-payload"
+    });
+    const success = store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      sentAt: "2026-08-01T00:01:00.000Z",
+      payloadHash: "same-payload"
+    });
+
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-01", "same-payload")).toEqual(success);
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-01", "different-payload")).toBeNull();
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-02", "same-payload")).toBeNull();
+    db.close();
+  });
+
+  it("stores cron runs and finds successful send runs by idempotency key", () => {
+    const { db, store } = openInitializedStore();
+    const failed = store.createCronRun({
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send",
+      startedAt: "2026-08-01T00:00:00.000Z",
+      stepName: "started"
+    });
+    store.markCronRunFailure(failed.id, {
+      finishedAt: "2026-08-01T00:00:01.000Z",
+      stepName: "failed",
+      candidateCount: 0,
+      errorMessage: "temporary"
+    });
+    const running = store.createCronRun({
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send",
+      startedAt: "2026-08-01T00:01:00.000Z",
+      stepName: "started"
+    });
+    const success = store.markCronRunSuccess(running.id, {
+      finishedAt: "2026-08-01T00:01:01.000Z",
+      stepName: "complete",
+      candidateCount: 1
+    });
+
+    expect(store.findSuccessfulCronRun("hermes-cron:daily-digest:2026-08-01")).toEqual(success);
+    expect(store.findSuccessfulCronRun("hermes-cron:daily-digest:2026-08-02")).toBeNull();
+    expect(store.listCronRuns("2026-08-01")).toHaveLength(2);
+    db.close();
+  });
+
+  it("prevents concurrent running send claims for the same cron idempotency key", () => {
+    const { db, store } = openInitializedStore();
+    const input = {
+      idempotencyKey: "hermes-cron:daily-digest:2026-08-01",
+      reportDate: "2026-08-01",
+      mode: "send" as const,
+      startedAt: "2026-08-01T00:00:00.000Z",
+      stepName: "started"
+    };
+
+    store.createCronRun(input);
+
+    expect(() =>
+      store.createCronRun({
+        ...input,
+        startedAt: "2026-08-01T00:00:01.000Z"
+      })
+    ).toThrow(/UNIQUE constraint failed/);
+    db.close();
+  });
 });

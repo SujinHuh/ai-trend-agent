@@ -20,22 +20,31 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 10 | `contradictionNotes` | Task 003 | Pending | Ranking agent | 기존 item/digest와 충돌하는 주장 기록 |
 | 11 | `stalenessPolicy` | Task 003 | Pending | Ranking agent | 재확인 날짜 또는 만료 기준 |
 | 12 | daily digest candidate CLI | Task 003 | Pending | Ranking agent | `npm run digest:candidates -- --date=YYYY-MM-DD` |
-| 13 | trusted individual registry | Task 007 | Pending | Social signal agent | 유명 AI 인물, maintainer, researcher allow-list |
-| 14 | official org social registry | Task 007 | Pending | Social signal agent | OpenAI, Anthropic, Kimi, DeepSeek, Qwen 등 공식 계정 |
-| 15 | community source registry | Task 007 | Pending | Social signal agent | Reddit, HN, newsletter/manual export 후보 |
-| 16 | social signal collector | Task 007 | Pending | Social signal agent | X/Threads API, Reddit RSS/API, HN API, manual export |
-| 17 | official-source cross-confirmation | Task 003 + Task 007 | Pending | Ranking + Social signal agents | social 단독 신호를 사실로 승격하지 않기 위한 연결 |
-| 18 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
-| 19 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
-| 20 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
+| 13 | trusted individual registry | Task 007 | Done | Social signal agent | disabled-by-default social registry로 구현 |
+| 14 | official org social registry | Task 007 | Done | Social signal agent | `official_social` credibility와 official domain matching 정책으로 구현 |
+| 15 | community source registry | Task 007 | Done | Social signal agent | Reddit/HN/manual 후보를 disabled config로 구현 |
+| 16 | social signal collector MVP | Task 007 | Done | Social signal agent | manual public JSONL import, HN fixture normalizer, Reddit RSS fixture normalizer 구현 |
+| 17 | official-source cross-confirmation | Task 007 | Done | Ranking + Social signal agents | canonical outbound URL과 existing SourceEvidence 매칭 구현 |
+| 18 | X live collector | 007B social live collectors | Deferred | Social signal agent | X API token scope, rate limit, billing/policy 확인 후 구현 |
+| 19 | Threads live collector | 007B social live collectors | Deferred | Social signal agent | Meta API scope, app review, rate limit 확인 후 구현 |
+| 20 | HN/Reddit live polling runner | 007B social live collectors | Deferred | Social signal agent | live polling 주기, cache, policyReviewedAt, rate limit 확인 후 구현 |
+| 21 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
+| 22 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
+| 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
+| 24 | LLM summary provider integration | 007C LLM digest intelligence | Pending | Hermes/Ranking agent | Top 5-10 후보에만 LLM 요약, 중요도 판단, why/practicalImpact 생성 |
+| 25 | LLM token/cost logging | 007C LLM digest intelligence | Pending | Ops/Ranking agent | `cron_runs` 또는 별도 테이블에 input/output tokens, estimated cost 기록 |
+| 26 | user interest reranking | 007C LLM digest intelligence or Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
 
 ## 진행 원칙
 
 1. Task 003은 ranking/synthesis를 구현한다.
-2. Task 007은 social/trusted source 수집을 구현한다.
+2. Task 007은 social/trusted source 수집 MVP를 구현한다.
 3. Lint는 Task 003에서 최소 정책을 남기고, command 구현은 별도 later lint task로 분리한다.
 4. X/Threads/Reddit/HN 신호는 공식 출처로 확인되기 전까지 `needs_confirmation`이다.
-5. 지금 Task 002 PR에는 이 backlog와 source trust policy만 포함한다.
+5. X/Threads live collector와 HN/Reddit live polling runner는 007 완료 조건이 아니라 007B 후속 확장이다.
+6. 크롤링, 저장, Slack 발송만으로는 LLM token 비용이 발생하지 않는다.
+7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석, 개인 관심사 기반 재정렬은 LLM token을 사용하는 별도 구현 범위다.
+8. LLM 적용은 전체 수집 결과가 아니라 deterministic ranking 상위 5-10개 후보부터 시작한다.
 
 ## Task 003 최소 Done Criteria
 
@@ -55,3 +64,16 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 5. Reddit/HN은 RSS/API 기반으로만 수집한다.
 6. 모든 social item은 기본 `needs_confirmation`이다.
 7. 공식 출처와 같은 URL 또는 같은 model/vendor/topic으로 연결될 때만 confidence boost가 가능하다.
+
+## 007B Social Live Collectors Criteria
+
+Dedicated task docs:
+
+- [Task 007B Requirements](task/007B_social_live_collectors/requirements.md)
+- [Task 007B Implementation Sequence](task/007B_social_live_collectors/implementation-sequence.md)
+
+1. X API collector는 token scope, current rate limit, billing/app policy 확인 후에만 구현한다.
+2. Threads collector는 Meta API scope와 app review 제약 확인 후에만 구현한다.
+3. HN/Reddit live polling runner는 polling interval, cache, policyReviewedAt, deletion/dead filtering을 문서화한 뒤 구현한다.
+4. 모든 live collector는 source별 disabled 기본값을 유지하고 explicit enable이 있어야 실행한다.
+5. live collector도 social-only claim을 `needs_confirmation` 이상으로 승격하지 않는다.

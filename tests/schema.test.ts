@@ -25,7 +25,9 @@ describe("SQLite schema", () => {
               'source_evidence',
               'digest_trend_items',
               'trend_assessments',
-              'trend_assessment_lineage'
+              'trend_assessment_lineage',
+              'slack_delivery_attempts',
+              'social_signal_items'
             )
           ORDER BY name
         `
@@ -36,6 +38,8 @@ describe("SQLite schema", () => {
     expect(tables).toEqual([
       "digest_trend_items",
       "digests",
+      "slack_delivery_attempts",
+      "social_signal_items",
       "source_evidence",
       "trend_assessment_lineage",
       "trend_assessments",
@@ -213,7 +217,12 @@ describe("SQLite schema", () => {
               'idx_digest_trend_items_trend_item_id',
               'idx_trend_assessments_report_date',
               'idx_trend_assessments_score',
-              'idx_trend_assessment_lineage_assessment_id'
+              'idx_trend_assessment_lineage_assessment_id',
+              'idx_slack_delivery_attempts_duplicate_guard',
+              'idx_slack_delivery_attempts_report_date',
+              'idx_slack_delivery_attempts_sent_at',
+              'idx_social_signal_items_source_id',
+              'idx_social_signal_items_confirmation_status'
             )
           ORDER BY name
         `
@@ -224,13 +233,18 @@ describe("SQLite schema", () => {
     expect(indexes).toEqual([
       "idx_digest_trend_items_trend_item_id",
       "idx_digests_report_date",
+      "idx_slack_delivery_attempts_duplicate_guard",
+      "idx_slack_delivery_attempts_report_date",
+      "idx_slack_delivery_attempts_sent_at",
+      "idx_social_signal_items_confirmation_status",
+      "idx_social_signal_items_source_id",
       "idx_source_evidence_fetched_at",
       "idx_source_evidence_trend_item_id",
       "idx_trend_assessment_lineage_assessment_id",
       "idx_trend_assessments_report_date",
       "idx_trend_assessments_score"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    expect(db.pragma("user_version", { simple: true })).toBe(6);
     db.close();
   });
 
@@ -270,7 +284,7 @@ describe("SQLite schema", () => {
           SELECT name
           FROM sqlite_master
           WHERE type = 'table'
-            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage')
+            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage', 'slack_delivery_attempts', 'cron_runs', 'social_signal_items')
           ORDER BY name
         `
       )
@@ -278,12 +292,135 @@ describe("SQLite schema", () => {
       .all();
 
     expect(tables).toEqual([
+      "cron_runs",
+      "slack_delivery_attempts",
+      "social_signal_items",
       "source_evidence",
       "trend_assessment_lineage",
       "trend_assessments",
       "trend_items"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(3);
+    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    db.close();
+  });
+
+  it("creates cron run audit table and indexes", () => {
+    const db = openTestDatabase();
+    const indexes = db
+      .prepare(
+        `
+          SELECT name
+          FROM sqlite_master
+          WHERE type = 'index'
+            AND tbl_name = 'cron_runs'
+          ORDER BY name
+        `
+      )
+      .pluck()
+      .all();
+
+    expect(indexes).toEqual([
+      "idx_cron_runs_active_send_claim",
+      "idx_cron_runs_idempotency_status",
+      "idx_cron_runs_report_date",
+      "idx_cron_runs_started_at",
+      "sqlite_autoindex_cron_runs_1"
+    ]);
+    db.close();
+  });
+
+  it("rejects a drifted slack delivery attempts table with missing columns", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.exec(`
+      CREATE TABLE slack_delivery_attempts (
+        id TEXT PRIMARY KEY,
+        report_date TEXT NOT NULL,
+        webhook_host TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('success', 'failed')),
+        http_status_code INTEGER,
+        error_message TEXT,
+        sent_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+    `);
+
+    expect(() => initializeSchema(db)).toThrow(
+      /slack_delivery_attempts schema drift: missing column payload_hash/
+    );
+    expect(db.pragma("user_version", { simple: true })).toBe(0);
+    db.close();
+  });
+
+  it("rejects a drifted slack delivery attempts table without the status constraint", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.exec(`
+      CREATE TABLE slack_delivery_attempts (
+        id TEXT PRIMARY KEY,
+        report_date TEXT NOT NULL,
+        webhook_host TEXT NOT NULL,
+        status TEXT NOT NULL,
+        http_status_code INTEGER,
+        error_message TEXT,
+        sent_at TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+    `);
+
+    expect(() => initializeSchema(db)).toThrow(
+      /slack_delivery_attempts schema drift: missing status CHECK constraint/
+    );
+    expect(db.pragma("user_version", { simple: true })).toBe(0);
+    db.close();
+  });
+
+  it("rejects a drifted slack delivery attempts table with missing indexes", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.exec(`
+      CREATE TABLE slack_delivery_attempts (
+        id TEXT PRIMARY KEY,
+        report_date TEXT NOT NULL,
+        webhook_host TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('success', 'failed')),
+        http_status_code INTEGER,
+        error_message TEXT,
+        sent_at TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+    `);
+
+    expect(() => initializeSchema(db)).toThrow(
+      /schema drift: index idx_slack_delivery_attempts_report_date columns are , expected report_date/
+    );
+    expect(db.pragma("user_version", { simple: true })).toBe(0);
+    db.close();
+  });
+
+  it("rejects a drifted cron runs table with missing indexes", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.exec(`
+      CREATE TABLE cron_runs (
+        id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL,
+        report_date TEXT NOT NULL,
+        mode TEXT NOT NULL CHECK (mode IN ('dry_run', 'send')),
+        status TEXT NOT NULL CHECK (status IN ('running', 'success', 'failed')),
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        step_name TEXT NOT NULL,
+        candidate_count INTEGER,
+        slack_attempt_id TEXT,
+        error_message TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+    `);
+
+    expect(() => initializeSchema(db)).toThrow(
+      /schema drift: index idx_cron_runs_idempotency_status columns are , expected idempotency_key,mode,status/
+    );
+    expect(db.pragma("user_version", { simple: true })).toBe(0);
     db.close();
   });
 

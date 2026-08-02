@@ -85,6 +85,8 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - 요약
 - `whyItMatters`
 - `practicalImpact`
+- LLM 기반 중요도 판단
+- LLM 기반 사용자 관심사 재정렬
 - `trendCategory`
 - `actionLevel`
 - confidence score
@@ -93,10 +95,23 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - confirmation status
 - staleness policy
 - urgent candidate 분리
+- LLM token/cost usage log
+
+구현 경계:
+
+- 현재 Task 003 MVP는 LLM 없이 deterministic synthesis/ranking으로 동작한다.
+- 최종 제품 목표에는 LLM 요약, 중요도 판단, 왜 중요한지 분석, 사용자 관심사 기반 재정렬이 포함된다.
+- LLM 비용을 제한하기 위해 전체 크롤링 결과가 아니라 deterministic ranking 상위 5-10개만 기본 LLM 입력으로 사용한다.
+- 크롤링, DB 저장, Slack 발송 자체는 LLM token을 사용하지 않는다.
 
 상세 실행 순서:
 
 - [docs/task/003_trenditem_ranking/implementation-sequence.md](task/003_trenditem_ranking/implementation-sequence.md)
+
+완료 확인:
+
+- [docs/showcase/003_trenditem_ranking/completion.md](showcase/003_trenditem_ranking/completion.md)
+- [docs/showcase/003_trenditem_ranking/completion.html](showcase/003_trenditem_ranking/completion.html)
 
 ### 4. Slack 수동 발송
 
@@ -113,6 +128,15 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - LLM Wiki stable ID
 - delivery attempt log
 
+상세 실행 순서:
+
+- [docs/task/004_slack_manual_delivery/implementation-sequence.md](task/004_slack_manual_delivery/implementation-sequence.md)
+
+완료 확인:
+
+- [docs/showcase/004_slack_manual_delivery/completion.md](showcase/004_slack_manual_delivery/completion.md)
+- [docs/showcase/004_slack_manual_delivery/completion.html](showcase/004_slack_manual_delivery/completion.html)
+
 ### 5. Hermes `/cron` 연결
 
 목표:
@@ -126,6 +150,15 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - idempotency key
 - 중복 발송 방지
 - 단계별 실패 로그
+
+상세 실행 순서:
+
+- [docs/task/005_hermes_cron/implementation-sequence.md](task/005_hermes_cron/implementation-sequence.md)
+
+완료 확인:
+
+- [docs/showcase/005_hermes_cron/completion.md](showcase/005_hermes_cron/completion.md)
+- [docs/showcase/005_hermes_cron/completion.html](showcase/005_hermes_cron/completion.html)
 
 ### 6. GCP 배포
 
@@ -141,6 +174,15 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - Cloud Storage raw snapshot 저장
 - Cloud SQL PostgreSQL 또는 Firestore 전환 판단
 
+상세 실행 순서:
+
+- [docs/task/006_gcp_deployment/implementation-sequence.md](task/006_gcp_deployment/implementation-sequence.md)
+
+완료 확인:
+
+- [docs/showcase/006_gcp_deployment/completion.md](showcase/006_gcp_deployment/completion.md)
+- [docs/showcase/006_gcp_deployment/completion.html](showcase/006_gcp_deployment/completion.html)
+
 ### 7. 소셜 allow-list 확장
 
 목표:
@@ -155,10 +197,44 @@ OpenAI News와 Google Blog Feed는 2026-08-01 live validation에서 안정적인
 - 낮은 신뢰도 정책
 - 공식 출처와 교차 확인 규칙
 
+MVP 완료 기준:
+
+- social registry와 social item storage를 만든다.
+- manual public JSONL import를 지원한다.
+- HN/Reddit은 fixture-safe normalizer까지 구현한다.
+- X/Threads live collector와 HN/Reddit live polling runner는 구현하지 않고 `007B_social_live_collectors` 후속 확장으로 둔다.
+- 이유: 토큰 범위, rate limit, platform policy, app review 확인 전에는 운영 collector를 켜지 않는다.
+
 참고:
 
 - [docs/trusted-ai-signal-watchlist.md](trusted-ai-signal-watchlist.md)
 - [docs/task/007_social_allow_list/implementation-sequence.md](task/007_social_allow_list/implementation-sequence.md)
+
+### 7B. 소셜 live collector 선택 확장
+
+목표:
+
+- Slack daily digest에 들어갈 빠른 social signal을 실제 live polling으로 보강한다.
+
+진행 조건:
+
+- 008 도메인 확장보다 daily AI trend 품질 개선이 더 급하면 007B를 먼저 진행한다.
+- HN/Reddit live polling은 secrets 없이 시작할 수 있다.
+- X/Threads는 토큰 범위, rate limit, billing/app policy, app review 확인 전까지 Deferred로 유지한다.
+
+주요 산출물:
+
+- HN live polling runner
+- Reddit RSS live polling runner
+- `social:poll --dry-run`
+- rate-limit/cache guard
+- deleted/dead/private/unverifiable content filter
+- official evidence matching handoff
+
+참고:
+
+- [docs/task/007B_social_live_collectors/requirements.md](task/007B_social_live_collectors/requirements.md)
+- [docs/task/007B_social_live_collectors/implementation-sequence.md](task/007B_social_live_collectors/implementation-sequence.md)
 
 ### 8. Backend, Frontend, DevOps 도메인 확장
 
@@ -300,4 +376,95 @@ Task 002 GCP nginx 공개 URL:
 
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/002_ai_official_source_ingestion/completion.html
+```
+
+Task 003 완료 확인 산출물:
+
+- [docs/showcase/003_trenditem_ranking/completion.md](showcase/003_trenditem_ranking/completion.md)
+- [docs/showcase/003_trenditem_ranking/completion.html](showcase/003_trenditem_ranking/completion.html)
+
+Task 003 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/003_trenditem_ranking/completion.html
+```
+
+Task 004 완료 확인 산출물:
+
+- [docs/showcase/004_slack_manual_delivery/completion.md](showcase/004_slack_manual_delivery/completion.md)
+- [docs/showcase/004_slack_manual_delivery/completion.html](showcase/004_slack_manual_delivery/completion.html)
+
+Task 004 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/004_slack_manual_delivery/completion.html
+```
+
+Task 005 완료 확인 산출물:
+
+- [docs/showcase/005_hermes_cron/completion.md](showcase/005_hermes_cron/completion.md)
+- [docs/showcase/005_hermes_cron/completion.html](showcase/005_hermes_cron/completion.html)
+
+Task 005 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/005_hermes_cron/completion.html
+```
+
+Task 005 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/005_hermes_cron/completion.html
+```
+
+Task 005 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/005_hermes_cron/completion.html
+```
+
+Task 006 완료 확인 산출물:
+
+- [docs/showcase/006_gcp_deployment/completion.md](showcase/006_gcp_deployment/completion.md)
+- [docs/showcase/006_gcp_deployment/completion.html](showcase/006_gcp_deployment/completion.html)
+
+Task 006 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/006_gcp_deployment/completion.html
+```
+
+Task 006 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/006_gcp_deployment/completion.html
+```
+
+Task 006 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/006_gcp_deployment/completion.html
+```
+
+Task 007 완료 확인 산출물:
+
+- [docs/showcase/007_social_allow_list/completion.md](showcase/007_social_allow_list/completion.md)
+- [docs/showcase/007_social_allow_list/completion.html](showcase/007_social_allow_list/completion.html)
+
+Task 007 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/007_social_allow_list/completion.html
+```
+
+Task 007 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/007_social_allow_list/completion.html
+```
+
+Task 007 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.html
 ```

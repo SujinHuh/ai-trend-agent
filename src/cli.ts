@@ -2,7 +2,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { DigestCandidate, DigestWithItems } from "./domain/types.js";
+import { createCronHttpServer } from "./cron/cron-http-server.js";
+import { runHermesCron } from "./cron/run-hermes-cron.js";
+import type { DigestCandidate, DigestWithItems, SocialSignalItem } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
 import { resolveProjectPath } from "./security/path-scope.js";
@@ -11,6 +13,14 @@ import { ingestSources } from "./sources/ingest-sources.js";
 import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-config.js";
 import { runTrendSynthesis } from "./synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js";
+import { renderSlackDigest } from "./slack/render-slack-digest.js";
+import { buildSlackDigest, sendSlackDigest, type SlackWebhookSender } from "./slack/send-slack-digest.js";
+import { sendSlackWebhook as defaultSendSlackWebhook } from "./slack/slack-webhook.js";
+import { importManualSocialSignals } from "./social/manual-import.js";
+import {
+  DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
+  loadSocialSignalSources
+} from "./social/social-source-config.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
@@ -18,15 +28,24 @@ const DEFAULT_SAMPLE_DATE = "2026-07-29";
 interface CliOptions {
   dbPath: string;
   sourceConfigPath: string;
+  socialConfigPath: string;
+  socialImportPath?: string;
+  socialSourceId?: string;
   forceRefresh: boolean;
+  forceSend: boolean;
+  dryRun: boolean;
+  send: boolean;
+  force: boolean;
   cacheRoot?: string;
   date?: string;
   limit: number;
   outPath?: string;
+  port: number;
 }
 
 interface CliDependencies {
   env?: Record<string, string | undefined>;
+  sendSlackWebhook?: SlackWebhookSender;
   fetcher?: SourceFetcher;
   stdout?: (value: string) => void;
 }
@@ -64,8 +83,113 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
     case "wiki:index":
       writeWikiIndex(options);
       break;
+    case "slack:preview":
+      previewSlack(options);
+      break;
+    case "slack:send":
+      await sendSlack(options, dependencies);
+      break;
+    case "cron:run":
+      await runCron(options, dependencies);
+      break;
+    case "cron:serve":
+      await serveCron(options, dependencies);
+      break;
+    case "social:validate":
+      validateSocialSources(options);
+      break;
+    case "social:import":
+      importSocialSignals(options);
+      break;
+    case "social:list":
+      listSocialSignals(options);
+      break;
     default:
       printUsageAndExit(command);
+  }
+}
+
+function validateSocialSources(options: CliOptions): void {
+  const socialConfigPath = resolveProjectPath(options.socialConfigPath, "social source config path");
+  const sources = loadSocialSignalSources(socialConfigPath, { includeDisabled: true });
+  const enabledSources = sources.filter((source) => source.enabled);
+
+  console.log(
+    JSON.stringify(
+      {
+        configPath: socialConfigPath,
+        sourceCount: sources.length,
+        enabledSourceCount: enabledSources.length,
+        enabledSourceIds: enabledSources.map((source) => source.id),
+        deferredSourceIds: sources
+          .filter((source) => source.platform === "x" || source.platform === "threads")
+          .map((source) => source.id)
+      },
+      null,
+      2
+    )
+  );
+}
+
+function importSocialSignals(options: CliOptions): void {
+  if (options.socialImportPath === undefined) {
+    throw new Error("Missing required option: --input=PATH");
+  }
+  if (options.socialSourceId === undefined) {
+    throw new Error("Missing required option: --source-id=ID");
+  }
+
+  const sources = loadSocialSignalSources(resolveProjectPath(options.socialConfigPath, "social source config path"), {
+    includeDisabled: true
+  });
+  const source = sources.find((candidate) => candidate.id === options.socialSourceId);
+  if (source === undefined) {
+    throw new Error(`Unknown social source id: ${options.socialSourceId}`);
+  }
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const result = importManualSocialSignals({
+      source,
+      store,
+      jsonlPath: resolveProjectPath(options.socialImportPath, "social import path")
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          sourceId: result.sourceId,
+          importedCount: result.importedCount,
+          items: result.items.map(formatSocialSignalItem)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function listSocialSignals(options: CliOptions): void {
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const items = store.listSocialSignalItems(options.socialSourceId);
+    console.log(
+      JSON.stringify(
+        {
+          itemCount: items.length,
+          items: items.map(formatSocialSignalItem)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
   }
 }
 
@@ -339,6 +463,183 @@ function writeWikiIndex(options: CliOptions): void {
   }
 }
 
+function previewSlack(options: CliOptions): void {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+      includeDisabled: true
+    });
+    const built = buildSlackDigest({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit
+    });
+    console.log(
+      JSON.stringify(
+        {
+          reportDate: options.date,
+          mode: "preview",
+          candidateCount: built.candidateCount,
+          payload: built.payload
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const env = dependencies.env ?? process.env;
+  const webhookUrl = env.SLACK_WEBHOOK_URL;
+  if (webhookUrl === undefined || webhookUrl.trim().length === 0) {
+    throw new Error("Missing required environment variable: SLACK_WEBHOOK_URL");
+  }
+
+  const { db, store } = openStore(options.dbPath, env);
+
+  try {
+    store.initialize();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+      includeDisabled: true
+    });
+    const result = await sendSlackDigest({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit,
+      webhookUrl,
+      forceSend: options.forceSend,
+      sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook
+    });
+
+    (dependencies.stdout ?? console.log)(
+      JSON.stringify(
+        {
+          reportDate: options.date,
+          sent: result.sent,
+          attempt: result.attempt
+        },
+        null,
+        2
+      )
+    );
+
+    if (!result.sent) {
+      process.exitCode = 1;
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function runCron(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const { db, store } = openStore(options.dbPath, env);
+
+  try {
+    store.initialize();
+    const result = await runHermesCron({
+      store,
+      sources,
+      mode: resolveCronMode(options, env),
+      limit: options.limit,
+      force: options.force,
+      forceRefresh: options.forceRefresh,
+      sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
+      ...(options.date === undefined ? {} : { reportDate: options.date }),
+      ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
+      ...(env.SLACK_WEBHOOK_URL === undefined ? {} : { webhookUrl: env.SLACK_WEBHOOK_URL }),
+      ...(dependencies.fetcher === undefined ? {} : { fetcher: dependencies.fetcher })
+    });
+
+    (dependencies.stdout ?? console.log)(JSON.stringify(toCronOutput(result), null, 2));
+    if (result.status !== "success") {
+      process.exitCode = 1;
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function serveCron(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  store.initialize();
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const server = createCronHttpServer({
+    env,
+    buildInput: (request) => {
+      return {
+        store,
+        sources,
+        mode: request.mode ?? resolveCronMode(options, env),
+        limit: options.limit,
+        force: request.force === true || options.force,
+        forceRefresh: options.forceRefresh,
+        sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
+        ...(request.reportDate === undefined ? {} : { reportDate: request.reportDate }),
+        ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
+        ...(env.SLACK_WEBHOOK_URL === undefined ? {} : { webhookUrl: env.SLACK_WEBHOOK_URL }),
+        ...(dependencies.fetcher === undefined ? {} : { fetcher: dependencies.fetcher })
+      };
+    }
+  });
+  server.on("close", () => db.close());
+
+  await new Promise<void>((resolveListen) => {
+    server.listen(options.port, () => {
+      (dependencies.stdout ?? console.log)(`Hermes cron server listening on port ${options.port}`);
+      resolveListen();
+    });
+  });
+}
+
+function resolveCronMode(options: CliOptions, env: Record<string, string | undefined>) {
+  if (options.dryRun && options.send) {
+    throw new Error("Choose only one cron mode: --dry-run or --send");
+  }
+  if (options.send) {
+    return "send";
+  }
+  if (options.dryRun) {
+    return "dry_run";
+  }
+  if (env.CRON_DEFAULT_MODE === "send") {
+    return "send";
+  }
+
+  return "dry_run";
+}
+
+function toCronOutput(result: Awaited<ReturnType<typeof runHermesCron>>) {
+  return {
+    reportDate: result.reportDate,
+    mode: result.mode,
+    status: result.status,
+    idempotencyKey: result.idempotencyKey,
+    cronRun: result.cronRun,
+    candidateCount: result.candidateCount,
+    slackAttemptId: result.slackAttempt?.id ?? null,
+    payload: result.payload,
+    errorMessage: result.errorMessage
+  };
+}
+
 function openStore(dbPath: string, env: Record<string, string | undefined> = process.env) {
   const resolvedDbPath = resolveProjectPath(dbPath, "SQLite database path", env);
   mkdirSync(dirname(resolvedDbPath), { recursive: true });
@@ -351,7 +652,13 @@ function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = {
     dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
     sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
+    socialConfigPath: process.env.SOCIAL_SOURCE_CONFIG_PATH ?? DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
     forceRefresh: false,
+    forceSend: false,
+    dryRun: false,
+    send: false,
+    force: false,
+    port: 3000,
     limit: 5
   };
 
@@ -362,20 +669,53 @@ function parseOptions(args: string[]): CliOptions {
       options.dbPath = arg.slice("--db=".length);
     } else if (arg.startsWith("--config=")) {
       options.sourceConfigPath = arg.slice("--config=".length);
+    } else if (arg.startsWith("--social-config=")) {
+      options.socialConfigPath = arg.slice("--social-config=".length);
+    } else if (arg.startsWith("--source-id=")) {
+      options.socialSourceId = arg.slice("--source-id=".length);
+    } else if (arg.startsWith("--input=")) {
+      options.socialImportPath = arg.slice("--input=".length);
     } else if (arg === "--force-refresh") {
       options.forceRefresh = true;
+    } else if (arg === "--force-send") {
+      options.forceSend = true;
+    } else if (arg === "--dry-run") {
+      options.dryRun = true;
+    } else if (arg === "--send") {
+      options.send = true;
+    } else if (arg === "--force") {
+      options.force = true;
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
     } else if (arg.startsWith("--limit=")) {
       options.limit = parsePositiveInteger(arg.slice("--limit=".length), "--limit");
     } else if (arg.startsWith("--out=")) {
       options.outPath = arg.slice("--out=".length);
+    } else if (arg.startsWith("--port=")) {
+      options.port = parsePositiveInteger(arg.slice("--port=".length), "--port");
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
   }
 
   return options;
+}
+
+function formatSocialSignalItem(item: SocialSignalItem) {
+  return {
+    id: item.id,
+    sourceId: item.sourceId,
+    platform: item.platform,
+    authorHandle: item.authorHandle,
+    url: item.url,
+    canonicalUrl: item.canonicalUrl,
+    text: item.text,
+    publishedAt: item.publishedAt,
+    collectedAt: item.collectedAt,
+    outboundUrls: item.outboundUrls,
+    confirmationStatus: item.confirmationStatus,
+    linkedOfficialEvidenceIds: item.linkedOfficialEvidenceIds
+  };
 }
 
 function formatDigest(digest: DigestWithItems) {
@@ -474,11 +814,20 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run digest:candidates -- --date=YYYY-MM-DD --limit=5",
       "  npm run wiki:query -- --date=YYYY-MM-DD",
       "  npm run wiki:index -- --date=YYYY-MM-DD --out=docs/wiki/index.md",
+      "  npm run slack:preview -- --date=YYYY-MM-DD --limit=5",
+      "  npm run slack:send -- --date=YYYY-MM-DD --limit=5",
+      "  npm run social:validate",
+      "  npm run social:import -- --source-id=manual-public-ai-links --input=PATH",
+      "  npm run social:list",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",
+      "  --social-config=PATH Override the social source registry config path",
+      "  --source-id=ID     Select a social source id",
+      "  --input=PATH       Input path for social:import",
       "  --cache-root=PATH  Override the source cache root",
       "  --force-refresh    Bypass source cache",
+      "  --force-send       Allow slack:send to resend an identical successful payload",
       "  --limit=N          Limit candidate output",
       "  --out=PATH         Output path for wiki:index"
     ].join("\n")

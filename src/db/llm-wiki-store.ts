@@ -1,9 +1,17 @@
 import type {
   ActionLevel,
   ConfirmationStatus,
+  CronRun,
+  CronRunMode,
+  CronRunStatus,
   Digest,
   DigestCandidate,
   DigestWithItems,
+  SlackDeliveryAttempt,
+  SlackDeliveryStatus,
+  SocialConfirmationStatus,
+  SocialPlatform,
+  SocialSignalItem,
   SourceEvidence,
   TrendAssessment,
   TrendAssessmentInput,
@@ -12,8 +20,11 @@ import type {
   TrendItem
 } from "../domain/types.js";
 import {
+  createCronRunId,
   createDigestId,
   createEvidenceId,
+  createSlackDeliveryAttemptId,
+  createSocialSignalId,
   createTrendAssessmentId,
   createTrendIdentity
 } from "../identity/stable-id.js";
@@ -73,6 +84,49 @@ interface TrendAssessmentLineageRow {
   confidence_score: number;
 }
 
+interface SlackDeliveryAttemptRow {
+  id: string;
+  report_date: string;
+  webhook_host: string;
+  status: SlackDeliveryStatus;
+  http_status_code: number | null;
+  error_message: string | null;
+  sent_at: string;
+  payload_hash: string;
+}
+
+interface CronRunRow {
+  id: string;
+  idempotency_key: string;
+  report_date: string;
+  mode: CronRunMode;
+  status: CronRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  step_name: string;
+  candidate_count: number | null;
+  slack_attempt_id: string | null;
+  error_message: string | null;
+}
+
+interface SocialSignalItemRow {
+  id: string;
+  source_id: string;
+  platform: SocialPlatform;
+  author_handle: string | null;
+  author_display_name: string | null;
+  url: string;
+  canonical_url: string;
+  text: string;
+  published_at: string | null;
+  collected_at: string;
+  outbound_urls_json: string;
+  confirmation_status: SocialConfirmationStatus;
+  linked_official_evidence_ids_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SaveTrendItemInput {
   sourceUrl: string;
   title: string;
@@ -116,6 +170,47 @@ export interface SaveTrendAssessmentInput {
   contradictionNotes?: string | null;
   stalenessPolicy: string;
   sourceEvidenceIds: string[];
+}
+
+export interface SaveSlackDeliveryAttemptInput {
+  reportDate: string;
+  webhookHost: string;
+  status: SlackDeliveryStatus;
+  httpStatusCode?: number | null;
+  errorMessage?: string | null;
+  sentAt: string;
+  payloadHash: string;
+}
+
+export interface CreateCronRunInput {
+  idempotencyKey: string;
+  reportDate: string;
+  mode: CronRunMode;
+  startedAt: string;
+  stepName: string;
+}
+
+export interface CompleteCronRunInput {
+  finishedAt: string;
+  stepName: string;
+  candidateCount?: number | null;
+  slackAttemptId?: string | null;
+  errorMessage?: string | null;
+}
+
+export interface SaveSocialSignalItemInput {
+  sourceId: string;
+  platform: SocialPlatform;
+  authorHandle?: string | null;
+  authorDisplayName?: string | null;
+  url: string;
+  canonicalUrl: string;
+  text: string;
+  publishedAt?: string | null;
+  collectedAt: string;
+  outboundUrls: string[];
+  confirmationStatus: SocialConfirmationStatus;
+  linkedOfficialEvidenceIds: string[];
 }
 
 export class LlmWikiStore {
@@ -565,6 +660,495 @@ export class LlmWikiStore {
     return rows.map(mapTrendAssessmentLineage);
   }
 
+  saveSlackDeliveryAttempt(input: SaveSlackDeliveryAttemptInput): SlackDeliveryAttempt {
+    const id = createSlackDeliveryAttemptId({
+      reportDate: input.reportDate,
+      sentAt: input.sentAt,
+      payloadHash: input.payloadHash
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO slack_delivery_attempts (
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        id,
+        input.reportDate,
+        input.webhookHost,
+        input.status,
+        input.httpStatusCode ?? null,
+        input.errorMessage ?? null,
+        input.sentAt,
+        input.payloadHash
+      );
+
+    const attempt = this.getSlackDeliveryAttempt(id);
+    if (attempt === null) {
+      throw new Error(`SlackDeliveryAttempt was not saved: ${id}`);
+    }
+
+    return attempt;
+  }
+
+  getSlackDeliveryAttempt(id: string): SlackDeliveryAttempt | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE id = ?
+        `
+      )
+      .get(id) as SlackDeliveryAttemptRow | undefined;
+
+    return row === undefined ? null : mapSlackDeliveryAttempt(row);
+  }
+
+  listSlackDeliveryAttempts(reportDate: string): SlackDeliveryAttempt[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE report_date = ?
+          ORDER BY sent_at DESC, id ASC
+        `
+      )
+      .all(reportDate) as SlackDeliveryAttemptRow[];
+
+    return rows.map(mapSlackDeliveryAttempt);
+  }
+
+  findSuccessfulSlackDeliveryAttempt(reportDate: string, payloadHash: string): SlackDeliveryAttempt | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            webhook_host,
+            status,
+            http_status_code,
+            error_message,
+            sent_at,
+            payload_hash
+          FROM slack_delivery_attempts
+          WHERE report_date = ?
+            AND payload_hash = ?
+            AND status = 'success'
+          ORDER BY sent_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(reportDate, payloadHash) as SlackDeliveryAttemptRow | undefined;
+
+    return row === undefined ? null : mapSlackDeliveryAttempt(row);
+  }
+
+  saveSocialSignalItem(input: SaveSocialSignalItemInput): SocialSignalItem {
+    const id = createSocialSignalId({
+      sourceId: input.sourceId,
+      canonicalUrl: input.canonicalUrl,
+      publishedAt: input.publishedAt
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO social_signal_items (
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(source_id, canonical_url) DO UPDATE SET
+            author_handle = excluded.author_handle,
+            author_display_name = excluded.author_display_name,
+            text = excluded.text,
+            published_at = excluded.published_at,
+            collected_at = excluded.collected_at,
+            outbound_urls_json = excluded.outbound_urls_json,
+            confirmation_status = excluded.confirmation_status,
+            linked_official_evidence_ids_json = excluded.linked_official_evidence_ids_json,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        `
+      )
+      .run(
+        id,
+        input.sourceId,
+        input.platform,
+        input.authorHandle ?? null,
+        input.authorDisplayName ?? null,
+        input.url,
+        input.canonicalUrl,
+        input.text,
+        input.publishedAt ?? null,
+        input.collectedAt,
+        JSON.stringify(input.outboundUrls),
+        input.confirmationStatus,
+        JSON.stringify(input.linkedOfficialEvidenceIds)
+      );
+
+    const item = this.getSocialSignalItem(id) ?? this.getSocialSignalItemBySourceAndUrl(input.sourceId, input.canonicalUrl);
+    if (item === null) {
+      throw new Error(`SocialSignalItem was not saved: ${id}`);
+    }
+
+    return item;
+  }
+
+  saveSocialSignalItems(inputs: SaveSocialSignalItemInput[]): SocialSignalItem[] {
+    const saveMany = this.db.transaction((items: SaveSocialSignalItemInput[]) =>
+      items.map((item) => this.saveSocialSignalItem(item))
+    );
+    return saveMany(inputs);
+  }
+
+  getSocialSignalItem(id: string): SocialSignalItem | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json,
+            created_at,
+            updated_at
+          FROM social_signal_items
+          WHERE id = ?
+        `
+      )
+      .get(id) as SocialSignalItemRow | undefined;
+
+    return row === undefined ? null : mapSocialSignalItem(row);
+  }
+
+  getSocialSignalItemBySourceAndUrl(sourceId: string, canonicalUrl: string): SocialSignalItem | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            source_id,
+            platform,
+            author_handle,
+            author_display_name,
+            url,
+            canonical_url,
+            text,
+            published_at,
+            collected_at,
+            outbound_urls_json,
+            confirmation_status,
+            linked_official_evidence_ids_json,
+            created_at,
+            updated_at
+          FROM social_signal_items
+          WHERE source_id = ?
+            AND canonical_url = ?
+        `
+      )
+      .get(sourceId, canonicalUrl) as SocialSignalItemRow | undefined;
+
+    return row === undefined ? null : mapSocialSignalItem(row);
+  }
+
+  listSocialSignalItems(sourceId?: string): SocialSignalItem[] {
+    const baseSelect = `
+      SELECT
+        id,
+        source_id,
+        platform,
+        author_handle,
+        author_display_name,
+        url,
+        canonical_url,
+        text,
+        published_at,
+        collected_at,
+        outbound_urls_json,
+        confirmation_status,
+        linked_official_evidence_ids_json,
+        created_at,
+        updated_at
+      FROM social_signal_items
+    `;
+    const rows =
+      sourceId === undefined
+        ? (this.db
+            .prepare(`${baseSelect} ORDER BY collected_at DESC, id ASC`)
+            .all() as SocialSignalItemRow[])
+        : (this.db
+            .prepare(`${baseSelect} WHERE source_id = ? ORDER BY collected_at DESC, id ASC`)
+            .all(sourceId) as SocialSignalItemRow[]);
+
+    return rows.map(mapSocialSignalItem);
+  }
+
+  findSourceEvidenceByCanonicalUrls(canonicalUrls: string[]): SourceEvidence[] {
+    if (canonicalUrls.length === 0) {
+      return [];
+    }
+    const uniqueUrls = new Set(canonicalUrls.map(canonicalizeUrl));
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            trend_item_id,
+            source_url,
+            source_name,
+            fetched_at,
+            evidence_excerpt,
+            confidence_score
+          FROM source_evidence
+        `
+      )
+      .all() as SourceEvidenceRow[];
+
+    return rows.map(mapSourceEvidence).filter((evidence) => uniqueUrls.has(canonicalizeUrl(evidence.sourceUrl)));
+  }
+
+  countSocialSignalsLinkedToEvidence(sourceEvidenceIds: string[]): number {
+    if (sourceEvidenceIds.length === 0) {
+      return 0;
+    }
+    const ids = new Set(sourceEvidenceIds);
+    return this.listSocialSignalItems().filter((item) =>
+      item.linkedOfficialEvidenceIds.some((evidenceId) => ids.has(evidenceId))
+    ).length;
+  }
+
+  createCronRun(input: CreateCronRunInput): CronRun {
+    const id = createCronRunId({
+      idempotencyKey: input.idempotencyKey,
+      startedAt: input.startedAt
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO cron_runs (
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            step_name
+          )
+          VALUES (?, ?, ?, ?, 'running', ?, ?)
+        `
+      )
+      .run(id, input.idempotencyKey, input.reportDate, input.mode, input.startedAt, input.stepName);
+
+    const run = this.getCronRun(id);
+    if (run === null) {
+      throw new Error(`CronRun was not saved: ${id}`);
+    }
+
+    return run;
+  }
+
+  markCronRunSuccess(id: string, input: CompleteCronRunInput): CronRun {
+    return this.updateCronRun(id, "success", input);
+  }
+
+  markCronRunFailure(id: string, input: CompleteCronRunInput): CronRun {
+    return this.updateCronRun(id, "failed", input);
+  }
+
+  getCronRun(id: string): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE id = ?
+        `
+      )
+      .get(id) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  findSuccessfulCronRun(idempotencyKey: string, mode: CronRunMode = "send"): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE idempotency_key = ?
+            AND mode = ?
+            AND status = 'success'
+          ORDER BY finished_at DESC, started_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(idempotencyKey, mode) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  findRunningCronRun(idempotencyKey: string, mode: CronRunMode = "send"): CronRun | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE idempotency_key = ?
+            AND mode = ?
+            AND status = 'running'
+          ORDER BY started_at DESC, id ASC
+          LIMIT 1
+        `
+      )
+      .get(idempotencyKey, mode) as CronRunRow | undefined;
+
+    return row === undefined ? null : mapCronRun(row);
+  }
+
+  listCronRuns(reportDate: string): CronRun[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            idempotency_key,
+            report_date,
+            mode,
+            status,
+            started_at,
+            finished_at,
+            step_name,
+            candidate_count,
+            slack_attempt_id,
+            error_message
+          FROM cron_runs
+          WHERE report_date = ?
+          ORDER BY started_at DESC, id ASC
+        `
+      )
+      .all(reportDate) as CronRunRow[];
+
+    return rows.map(mapCronRun);
+  }
+
+  private updateCronRun(id: string, status: CronRunStatus, input: CompleteCronRunInput): CronRun {
+    this.db
+      .prepare(
+        `
+          UPDATE cron_runs
+          SET
+            status = ?,
+            finished_at = ?,
+            step_name = ?,
+            candidate_count = ?,
+            slack_attempt_id = ?,
+            error_message = ?,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE id = ?
+        `
+      )
+      .run(
+        status,
+        input.finishedAt,
+        input.stepName,
+        input.candidateCount ?? null,
+        input.slackAttemptId ?? null,
+        input.errorMessage ?? null,
+        id
+      );
+
+    const run = this.getCronRun(id);
+    if (run === null) {
+      throw new Error(`CronRun was not found: ${id}`);
+    }
+
+    return run;
+  }
+
   getDigestByReportDate(reportDate: string): DigestWithItems | null {
     const digest = this.getDigest(reportDate);
 
@@ -681,6 +1265,67 @@ function mapTrendAssessmentLineage(row: TrendAssessmentLineageRow): TrendAssessm
     sourceUrl: row.source_url,
     confidenceScore: row.confidence_score
   };
+}
+
+function mapSlackDeliveryAttempt(row: SlackDeliveryAttemptRow): SlackDeliveryAttempt {
+  return {
+    id: row.id,
+    reportDate: row.report_date,
+    webhookHost: row.webhook_host,
+    status: row.status,
+    httpStatusCode: row.http_status_code,
+    errorMessage: row.error_message,
+    sentAt: row.sent_at,
+    payloadHash: row.payload_hash
+  };
+}
+
+function mapCronRun(row: CronRunRow): CronRun {
+  return {
+    id: row.id,
+    idempotencyKey: row.idempotency_key,
+    reportDate: row.report_date,
+    mode: row.mode,
+    status: row.status,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    stepName: row.step_name,
+    candidateCount: row.candidate_count,
+    slackAttemptId: row.slack_attempt_id,
+    errorMessage: row.error_message
+  };
+}
+
+function mapSocialSignalItem(row: SocialSignalItemRow): SocialSignalItem {
+  return {
+    id: row.id,
+    sourceId: row.source_id,
+    platform: row.platform,
+    authorHandle: row.author_handle,
+    authorDisplayName: row.author_display_name,
+    url: row.url,
+    canonicalUrl: row.canonical_url,
+    text: row.text,
+    publishedAt: row.published_at,
+    collectedAt: row.collected_at,
+    outboundUrls: parseStringArray(row.outbound_urls_json, "outbound_urls_json"),
+    confirmationStatus: row.confirmation_status,
+    linkedOfficialEvidenceIds: parseStringArray(
+      row.linked_official_evidence_ids_json,
+      "linked_official_evidence_ids_json"
+    ),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function parseStringArray(value: string, label: string): string[] {
+  const parsed = JSON.parse(value) as unknown;
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+    throw new Error(`social_signal_items data drift: ${label} must be a string array`);
+  }
+
+  return parsed;
 }
 
 function getKstReportDateWindow(reportDate: string): { startUtc: string; endUtc: string } {

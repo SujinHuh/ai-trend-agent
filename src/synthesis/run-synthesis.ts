@@ -19,11 +19,13 @@ export function runTrendSynthesis(input: {
   const items = input.store.listTrendAssessmentInputsForReportDate(input.reportDate);
 
   for (const item of items) {
+    const socialSignalCount = input.store.countSocialSignalsLinkedToEvidence(item.evidence.map((evidence) => evidence.id));
     input.store.saveTrendAssessment(
       createTrendSynthesis({
         item,
         reportDate: input.reportDate,
-        metadataByName
+        metadataByName,
+        socialSignalCount
       })
     );
   }

@@ -1,0 +1,119 @@
+[
+  {
+    "id": "manual-public-ai-links",
+    "platform": "manual",
+    "displayName": "Manual public AI signal links",
+    "credibility": "trusted_individual",
+    "collectionMethod": "manual_export",
+    "enabled": false,
+    "defaultConfirmationStatus": "needs_confirmation",
+    "handles": [],
+    "accountIds": [],
+    "subreddits": [],
+    "keywords": ["ai", "llm", "agent", "model", "inference", "open source"],
+    "officialDomainsToConfirm": ["openai.com", "anthropic.com", "mistral.ai", "huggingface.co", "github.com"],
+    "rateLimit": {
+      "maxRequestsPerWindow": 1,
+      "windowSeconds": 60
+    },
+    "security": {
+      "requiresToken": false
+    },
+    "policyReviewedAt": "2026-08-02",
+    "policyNotes": "Manual public-link import only; private chats, screenshots, deleted/private posts are rejected."
+  },
+  {
+    "id": "hacker-news-ai",
+    "platform": "hacker_news",
+    "displayName": "Hacker News AI keyword scan",
+    "credibility": "community",
+    "collectionMethod": "api",
+    "enabled": false,
+    "defaultConfirmationStatus": "needs_confirmation",
+    "handles": [],
+    "accountIds": [],
+    "subreddits": [],
+    "keywords": ["ai", "llm", "agent", "openai", "anthropic", "mistral", "hugging face"],
+    "officialDomainsToConfirm": ["openai.com", "anthropic.com", "mistral.ai", "huggingface.co", "github.com"],
+    "rateLimit": {
+      "maxRequestsPerWindow": 60,
+      "windowSeconds": 60
+    },
+    "security": {
+      "requiresToken": false
+    },
+    "policyReviewedAt": "2026-08-02",
+    "policyNotes": "Use official Hacker News Firebase API only; deleted/dead items are discarded."
+  },
+  {
+    "id": "reddit-local-llama",
+    "platform": "reddit",
+    "displayName": "Reddit LocalLLaMA RSS",
+    "credibility": "community",
+    "collectionMethod": "rss",
+    "enabled": false,
+    "defaultConfirmationStatus": "needs_confirmation",
+    "handles": [],
+    "accountIds": [],
+    "subreddits": ["LocalLLaMA"],
+    "keywords": ["ai", "llm", "agent", "model", "open source", "inference"],
+    "officialDomainsToConfirm": ["openai.com", "anthropic.com", "mistral.ai", "huggingface.co", "github.com"],
+    "rateLimit": {
+      "maxRequestsPerWindow": 12,
+      "windowSeconds": 60
+    },
+    "security": {
+      "requiresToken": false
+    },
+    "policyReviewedAt": "2026-08-02",
+    "policyNotes": "RSS/API only; no browser scraping or private/deleted content retention."
+  },
+  {
+    "id": "x-karpathy",
+    "platform": "x",
+    "displayName": "Andrej Karpathy X",
+    "credibility": "trusted_individual",
+    "collectionMethod": "api",
+    "enabled": false,
+    "defaultConfirmationStatus": "needs_confirmation",
+    "handles": ["karpathy"],
+    "accountIds": [],
+    "subreddits": [],
+    "keywords": ["ai", "llm", "agent", "model", "inference", "open source"],
+    "officialDomainsToConfirm": ["openai.com", "anthropic.com", "mistral.ai", "huggingface.co", "github.com"],
+    "rateLimit": {
+      "maxRequestsPerWindow": 1,
+      "windowSeconds": 60
+    },
+    "security": {
+      "requiresToken": true,
+      "secretEnvName": "X_API_BEARER_TOKEN"
+    },
+    "policyReviewedAt": "2026-08-02",
+    "policyNotes": "Deferred until X API token scope, rate limits, and billing constraints are confirmed."
+  },
+  {
+    "id": "threads-ai-watch",
+    "platform": "threads",
+    "displayName": "Threads AI watch",
+    "credibility": "trusted_individual",
+    "collectionMethod": "api",
+    "enabled": false,
+    "defaultConfirmationStatus": "needs_confirmation",
+    "handles": [],
+    "accountIds": [],
+    "subreddits": [],
+    "keywords": ["ai", "llm", "agent", "model"],
+    "officialDomainsToConfirm": ["openai.com", "anthropic.com", "mistral.ai", "huggingface.co", "github.com"],
+    "rateLimit": {
+      "maxRequestsPerWindow": 1,
+      "windowSeconds": 60
+    },
+    "security": {
+      "requiresToken": true,
+      "secretEnvName": "THREADS_API_TOKEN"
+    },
+    "policyReviewedAt": "2026-08-02",
+    "policyNotes": "Deferred until Meta Threads API scope and app review constraints are confirmed."
+  }
+]

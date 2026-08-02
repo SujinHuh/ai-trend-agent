@@ -1,0 +1,15 @@
+.cache/
+.agents/
+.codex/
+.env
+.env.*
+.git/
+.github/
+.openai/
+data/
+dist/
+docs/showcase/
+node_modules/
+npm-debug.log*
+ops/nginx/
+tests/

@@ -8,6 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start:cron:serve": "node dist/src/cli.js cron:serve",
     "test": "vitest run",
     "test:watch": "vitest",
     "docs:serve": "node scripts/serve-docs.mjs",
@@ -18,7 +20,14 @@
     "ingest:run": "node --import tsx src/cli.ts ingest:run",
     "digest:candidates": "node --import tsx src/cli.ts digest:candidates",
     "wiki:query": "node --import tsx src/cli.ts wiki:query",
-    "wiki:index": "node --import tsx src/cli.ts wiki:index"
+    "wiki:index": "node --import tsx src/cli.ts wiki:index",
+    "slack:preview": "node --import tsx src/cli.ts slack:preview",
+    "slack:send": "node --import tsx src/cli.ts slack:send",
+    "cron:run": "node --import tsx src/cli.ts cron:run",
+    "cron:serve": "node --import tsx src/cli.ts cron:serve",
+    "social:validate": "node --import tsx src/cli.ts social:validate",
+    "social:import": "node --import tsx src/cli.ts social:import",
+    "social:list": "node --import tsx src/cli.ts social:list"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.1"

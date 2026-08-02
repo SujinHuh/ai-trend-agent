@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slack Manual Delivery Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --warn: #9a5b00;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 004 Verified</span>
+        <h1>Slack Manual Delivery</h1>
+        <p>
+          AI Trend Agent v2의 네 번째 기반 작업입니다. Task 003 ranked candidates를
+          Slack Incoming Webhook payload로 렌더링하고, preview와 명시적 manual send를 분리했습니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>14 / 14</strong>
+          <p>문서, 구현, 검수 수정, validation, completion report까지 완료했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>74 passed</strong>
+          <p>15개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>New table</span>
+          <strong>1</strong>
+          <p><code>slack_delivery_attempts</code></p>
+        </div>
+        <div class="card metric">
+          <span>CLI</span>
+          <strong>2</strong>
+          <p><code>slack:preview</code>, <code>slack:send</code></p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>Slack Incoming Webhook payload renderer</li>
+          <li>Top AI Signals와 conservative urgent section</li>
+          <li>LLM Wiki stable ID와 source link 포함</li>
+          <li>host-only delivery attempt logging</li>
+          <li>webhook error redaction</li>
+          <li>Slack link URL delimiter escaping</li>
+          <li>Slack payload block and text limit guards</li>
+          <li>duplicate-send guard with explicit <code>--force-send</code></li>
+          <li>drifted <code>slack_delivery_attempts</code> schema detection</li>
+          <li>preview와 send 명령 분리</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run slack:preview -- --date=2026-08-02 --limit=5
+
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/... \
+  npm run slack:send -- --date=2026-08-02 --limit=5</code></pre>
+        <p>
+          실제 전송은 <code>SLACK_WEBHOOK_URL</code>이 있을 때만 가능합니다.
+          현재 검증에서는 URL이 없어서 전송 전 실패하는 안전장치를 확인했습니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>git diff --check       passed
+npm run typecheck      passed
+npm test               passed
+
+15 test files passed
+87 tests passed
+related Task 004 tests passed: 5 files, 46 tests</code></pre>
+        </div>
+        <div class="card">
+          <h2>Security Checks</h2>
+          <ul>
+            <li>preview no-network test</li>
+            <li>missing webhook send guard</li>
+            <li>HTTPS and <code>/services/</code> webhook validation</li>
+            <li>full webhook URL redaction</li>
+            <li>encoded and newline-split webhook URL redaction</li>
+            <li>invalid webhook audit persistence</li>
+            <li>Slack payload block and text limit guards</li>
+            <li>Slack link URL delimiter escaping</li>
+            <li>host-only delivery log</li>
+            <li>duplicate successful payload guard</li>
+            <li>injectable send path for CLI tests</li>
+            <li>schema drift detection before version upgrade</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>제외한 것</h2>
+        <ul>
+          <li>Hermes cron</li>
+          <li>scheduled delivery</li>
+          <li>Slack Bot API</li>
+          <li>Slack interactivity</li>
+          <li>scheduled duplicate prevention</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>다음 작업</h2>
+        <p>
+          다음 v2 구현 단계는 <strong>Task 005 Hermes /cron 연결</strong>입니다.
+          Task 005는 Task 004의 manual send primitive와 duplicate guard를 재사용하고, cron-level idempotency를 추가해야 합니다.
+        </p>
+      </section>
+
+      <section class="card links">
+        <h2>확인 링크</h2>
+        <ul>
+          <li><a href="../../task/004_slack_manual_delivery/validation_report.md">Task 004 Validation Report</a></li>
+          <li><a href="../../task/004_slack_manual_delivery/phase_status.md">Task 004 Phase Status</a></li>
+          <li><a href="../../implementation-sequence-v2.md">Implementation Sequence v2</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
