@@ -295,4 +295,56 @@ describe("LlmWikiStore", () => {
     db.close();
   });
 
+  it("saves and lists Slack delivery attempts without storing webhook URLs", () => {
+    const { db, store } = openInitializedStore();
+
+    const attempt = store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      sentAt: "2026-08-01T00:00:00.000Z",
+      payloadHash: "hash"
+    });
+
+    expect(attempt).toMatchObject({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      errorMessage: null,
+      payloadHash: "hash"
+    });
+    expect(store.listSlackDeliveryAttempts("2026-08-01")).toEqual([attempt]);
+    expect(JSON.stringify(attempt)).not.toContain("https://hooks.slack.com");
+    db.close();
+  });
+
+  it("finds only successful Slack delivery attempts by report date and payload hash", () => {
+    const { db, store } = openInitializedStore();
+
+    store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "failed",
+      httpStatusCode: 500,
+      errorMessage: "server error",
+      sentAt: "2026-08-01T00:00:00.000Z",
+      payloadHash: "same-payload"
+    });
+    const success = store.saveSlackDeliveryAttempt({
+      reportDate: "2026-08-01",
+      webhookHost: "hooks.slack.com",
+      status: "success",
+      httpStatusCode: 200,
+      sentAt: "2026-08-01T00:01:00.000Z",
+      payloadHash: "same-payload"
+    });
+
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-01", "same-payload")).toEqual(success);
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-01", "different-payload")).toBeNull();
+    expect(store.findSuccessfulSlackDeliveryAttempt("2026-08-02", "same-payload")).toBeNull();
+    db.close();
+  });
+
 });

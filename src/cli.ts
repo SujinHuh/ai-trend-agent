@@ -11,6 +11,9 @@ import { ingestSources } from "./sources/ingest-sources.js";
 import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-config.js";
 import { runTrendSynthesis } from "./synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js";
+import { renderSlackDigest } from "./slack/render-slack-digest.js";
+import { buildSlackDigest, sendSlackDigest, type SlackWebhookSender } from "./slack/send-slack-digest.js";
+import { sendSlackWebhook as defaultSendSlackWebhook } from "./slack/slack-webhook.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
@@ -19,6 +22,7 @@ interface CliOptions {
   dbPath: string;
   sourceConfigPath: string;
   forceRefresh: boolean;
+  forceSend: boolean;
   cacheRoot?: string;
   date?: string;
   limit: number;
@@ -27,6 +31,7 @@ interface CliOptions {
 
 interface CliDependencies {
   env?: Record<string, string | undefined>;
+  sendSlackWebhook?: SlackWebhookSender;
   fetcher?: SourceFetcher;
   stdout?: (value: string) => void;
 }
@@ -63,6 +68,12 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
       break;
     case "wiki:index":
       writeWikiIndex(options);
+      break;
+    case "slack:preview":
+      previewSlack(options);
+      break;
+    case "slack:send":
+      await sendSlack(options, dependencies);
       break;
     default:
       printUsageAndExit(command);
@@ -339,6 +350,89 @@ function writeWikiIndex(options: CliOptions): void {
   }
 }
 
+function previewSlack(options: CliOptions): void {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const { db, store } = openStore(options.dbPath);
+
+  try {
+    store.initialize();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+      includeDisabled: true
+    });
+    const built = buildSlackDigest({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit
+    });
+    console.log(
+      JSON.stringify(
+        {
+          reportDate: options.date,
+          mode: "preview",
+          candidateCount: built.candidateCount,
+          payload: built.payload
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const env = dependencies.env ?? process.env;
+  const webhookUrl = env.SLACK_WEBHOOK_URL;
+  if (webhookUrl === undefined || webhookUrl.trim().length === 0) {
+    throw new Error("Missing required environment variable: SLACK_WEBHOOK_URL");
+  }
+
+  const { db, store } = openStore(options.dbPath, env);
+
+  try {
+    store.initialize();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+      includeDisabled: true
+    });
+    const result = await sendSlackDigest({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit,
+      webhookUrl,
+      forceSend: options.forceSend,
+      sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook
+    });
+
+    (dependencies.stdout ?? console.log)(
+      JSON.stringify(
+        {
+          reportDate: options.date,
+          sent: result.sent,
+          attempt: result.attempt
+        },
+        null,
+        2
+      )
+    );
+
+    if (!result.sent) {
+      process.exitCode = 1;
+    }
+  } finally {
+    db.close();
+  }
+}
+
 function openStore(dbPath: string, env: Record<string, string | undefined> = process.env) {
   const resolvedDbPath = resolveProjectPath(dbPath, "SQLite database path", env);
   mkdirSync(dirname(resolvedDbPath), { recursive: true });
@@ -352,6 +446,7 @@ function parseOptions(args: string[]): CliOptions {
     dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
     sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
     forceRefresh: false,
+    forceSend: false,
     limit: 5
   };
 
@@ -364,6 +459,8 @@ function parseOptions(args: string[]): CliOptions {
       options.sourceConfigPath = arg.slice("--config=".length);
     } else if (arg === "--force-refresh") {
       options.forceRefresh = true;
+    } else if (arg === "--force-send") {
+      options.forceSend = true;
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
     } else if (arg.startsWith("--limit=")) {
@@ -474,11 +571,14 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run digest:candidates -- --date=YYYY-MM-DD --limit=5",
       "  npm run wiki:query -- --date=YYYY-MM-DD",
       "  npm run wiki:index -- --date=YYYY-MM-DD --out=docs/wiki/index.md",
+      "  npm run slack:preview -- --date=YYYY-MM-DD --limit=5",
+      "  npm run slack:send -- --date=YYYY-MM-DD --limit=5",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",
       "  --cache-root=PATH  Override the source cache root",
       "  --force-refresh    Bypass source cache",
+      "  --force-send       Allow slack:send to resend an identical successful payload",
       "  --limit=N          Limit candidate output",
       "  --out=PATH         Output path for wiki:index"
     ].join("\n")
