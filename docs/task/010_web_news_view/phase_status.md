@@ -16,7 +16,7 @@ Overall status: `Implemented - PR Review`
 | 10 | Independent review | Done | 전체 | HIGH 1/LOW 2 수정, focused 4 files/38 tests, final blocker 0 |
 | 11 | Completion reports | Done | Harness | validation/showcase Markdown/HTML과 docs index 생성 |
 | 12 | GCP 공개 확인 | Done | Harness | news/health/showcase HTTP 200, cron 404, systemd/loopback/DB 권한 확인 |
-| 13 | PR and handoff | Pending | Harness | 한글 PR template, push, PR 확인 |
+| 13 | PR and handoff | Done | Harness | commit `c4602f9`, push, non-draft PR #13과 한글 template body 확인 |
 
 ## Gate
 
