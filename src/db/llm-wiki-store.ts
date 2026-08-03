@@ -7,6 +7,7 @@ import type {
   Digest,
   DigestCandidate,
   DigestWithItems,
+  LlmUsageLog,
   SlackDeliveryAttempt,
   SlackDeliveryStatus,
   SocialConfirmationStatus,
@@ -23,6 +24,7 @@ import {
   createCronRunId,
   createDigestId,
   createEvidenceId,
+  createLlmUsageLogId,
   createSlackDeliveryAttemptId,
   createSocialSignalId,
   createTrendAssessmentId,
@@ -107,6 +109,22 @@ interface CronRunRow {
   candidate_count: number | null;
   slack_attempt_id: string | null;
   error_message: string | null;
+}
+
+interface LlmUsageLogRow {
+  id: string;
+  report_date: string;
+  purpose: "digest_intelligence";
+  provider_name: string;
+  model_name: string;
+  candidate_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+  status: "success" | "fallback";
+  error_message: string | null;
+  created_at: string;
 }
 
 interface SocialSignalItemRow {
@@ -196,6 +214,20 @@ export interface CompleteCronRunInput {
   candidateCount?: number | null;
   slackAttemptId?: string | null;
   errorMessage?: string | null;
+}
+
+export interface SaveLlmUsageLogInput {
+  reportDate: string;
+  purpose: "digest_intelligence";
+  providerName: string;
+  modelName: string;
+  candidateCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: number;
+  status: "success" | "fallback";
+  errorMessage?: string | null;
+  createdAt: string;
 }
 
 export interface SaveSocialSignalItemInput {
@@ -1115,6 +1147,133 @@ export class LlmWikiStore {
     return rows.map(mapCronRun);
   }
 
+  saveLlmUsageLog(input: SaveLlmUsageLogInput): LlmUsageLog {
+    const totalTokens = input.inputTokens + input.outputTokens;
+    const sequence = Number(
+      this.db
+        .prepare(
+          `
+            SELECT COUNT(*)
+            FROM llm_usage_logs
+            WHERE report_date = ?
+              AND purpose = ?
+              AND provider_name = ?
+              AND model_name = ?
+              AND created_at = ?
+          `
+        )
+        .pluck()
+        .get(input.reportDate, input.purpose, input.providerName, input.modelName, input.createdAt)
+    );
+    const id = createLlmUsageLogId({
+      reportDate: input.reportDate,
+      purpose: input.purpose,
+      providerName: input.providerName,
+      modelName: input.modelName,
+      createdAt: input.createdAt,
+      sequence
+    });
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO llm_usage_logs (
+            id,
+            report_date,
+            purpose,
+            provider_name,
+            model_name,
+            candidate_count,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+            estimated_cost_usd,
+            status,
+            error_message,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        id,
+        input.reportDate,
+        input.purpose,
+        input.providerName,
+        input.modelName,
+        input.candidateCount,
+        input.inputTokens,
+        input.outputTokens,
+        totalTokens,
+        input.estimatedCostUsd,
+        input.status,
+        input.errorMessage ?? null,
+        input.createdAt
+      );
+
+    const log = this.getLlmUsageLog(id);
+    if (log === null) {
+      throw new Error(`LlmUsageLog was not saved: ${id}`);
+    }
+
+    return log;
+  }
+
+  getLlmUsageLog(id: string): LlmUsageLog | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            purpose,
+            provider_name,
+            model_name,
+            candidate_count,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+            estimated_cost_usd,
+            status,
+            error_message,
+            created_at
+          FROM llm_usage_logs
+          WHERE id = ?
+        `
+      )
+      .get(id) as LlmUsageLogRow | undefined;
+
+    return row === undefined ? null : mapLlmUsageLog(row);
+  }
+
+  listLlmUsageLogs(reportDate: string): LlmUsageLog[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            id,
+            report_date,
+            purpose,
+            provider_name,
+            model_name,
+            candidate_count,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+            estimated_cost_usd,
+            status,
+            error_message,
+            created_at
+          FROM llm_usage_logs
+          WHERE report_date = ?
+          ORDER BY created_at DESC, id ASC
+        `
+      )
+      .all(reportDate) as LlmUsageLogRow[];
+
+    return rows.map(mapLlmUsageLog);
+  }
+
   private updateCronRun(id: string, status: CronRunStatus, input: CompleteCronRunInput): CronRun {
     this.db
       .prepare(
@@ -1293,6 +1452,24 @@ function mapCronRun(row: CronRunRow): CronRun {
     candidateCount: row.candidate_count,
     slackAttemptId: row.slack_attempt_id,
     errorMessage: row.error_message
+  };
+}
+
+function mapLlmUsageLog(row: LlmUsageLogRow): LlmUsageLog {
+  return {
+    id: row.id,
+    reportDate: row.report_date,
+    purpose: row.purpose,
+    providerName: row.provider_name,
+    modelName: row.model_name,
+    candidateCount: row.candidate_count,
+    inputTokens: row.input_tokens,
+    outputTokens: row.output_tokens,
+    totalTokens: row.total_tokens,
+    estimatedCostUsd: row.estimated_cost_usd,
+    status: row.status,
+    errorMessage: row.error_message,
+    createdAt: row.created_at
   };
 }
 

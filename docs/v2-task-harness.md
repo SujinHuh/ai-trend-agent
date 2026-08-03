@@ -115,16 +115,26 @@ For each step:
 ```text
 1. Mark only that step In Progress.
 2. Implement the step.
-3. Run the smallest useful local validation for that step.
-4. Run sub-agent review for risk-bearing implementation steps.
-5. Apply review findings or explicitly document a deferral.
-6. Re-run validation after fixes.
-7. Mark that step Done only after validation and required review evidence are recorded.
+3. Add the required tests for that step before claiming it is done.
+4. Run the smallest useful local validation for that step.
+5. Run sub-agent review for risk-bearing implementation steps.
+6. Apply review findings or explicitly document a deferral.
+7. Re-run validation after fixes.
+8. Mark that step Done only after validation, test evidence, and required review evidence are recorded.
 ```
 
 Do not mark several numbered steps `Done` as a batch unless the validation report says which steps were reviewed together and why batching was appropriate.
 
 Risk-bearing implementation steps require sub-agent review. These include numbered steps that change schema, parser behavior, ingestion, external APIs, storage, ranking, LLM behavior, Slack, cron, deployment, security, credentials, rate limits, legal collection boundaries, public output, or future-scope docs.
+
+Do not defer normal test code to the end of the task. Unit, integration, and regression tests should be added in the same numbered step that introduces the behavior whenever practical. If a test is intentionally deferred, record why in `validation_report.md` and list the remaining risk.
+
+Test category guidance:
+
+- Unit tests: pure logic, parser, redaction, scoring, cost calculation, fallback decisions.
+- Integration tests: SQLite store, CLI command wiring, Slack digest build path, cron runner path.
+- Regression tests: existing commands and renderers that must keep working after the new behavior is added.
+- External live tests: only when policy, credentials, rate limits, and network access make them safe; otherwise record why they are excluded.
 
 Low-risk steps may be reviewed in a batch or by the final whole-task review. Examples: simple CLI wiring, link-only docs corrections, PR URL recording, phase status updates, or minor text cleanup.
 
@@ -221,18 +231,36 @@ Run before opening or updating a PR.
 
 Checklist:
 
-1. Confirm branch is pushed.
-2. Confirm PR body follows:
+1. Re-open and read the repo PR templates before writing or editing the PR body:
+   - `.github/PULL_REQUEST_TEMPLATE.md`
    - `docs/pr-template.md`
-3. Confirm PR body is saved under:
+2. Confirm the PR body keeps the template structure exactly:
+   - `# 📝 PR Template`
+   - `## 📌 변경 사항`
+   - `## 🔍 변경 내용 요약`
+   - `## ❓ 변경 이유`
+   - `## 🛠 테스트 및 검증`
+   - `## 🔗 연관 이슈`
+   - `## 💡 추가 설명`
+   - `## 👀 리뷰 요청`
+3. Write the PR title and body explanation in Korean unless the user explicitly asks otherwise.
+4. Keep only code identifiers, file paths, commands, enum values, API names, and proper nouns in English when needed.
+5. Confirm PR body is saved under:
    - `docs/pr/<NNN_task_slug>.md`
-4. Confirm validation results are copied into the PR body.
-5. Confirm showcase links are included.
-6. Confirm PR is not Draft once implementation, validation, and showcase are ready.
-7. Confirm base branch:
+6. Confirm validation results are copied into the PR body.
+7. Confirm test coverage is described by category:
+   - unit tests
+   - integration/CLI or storage tests
+   - regression tests
+   - intentionally excluded tests
+8. Confirm showcase links are included.
+9. Confirm branch is pushed.
+10. Confirm PR is not Draft once implementation, validation, and showcase are ready.
+11. Confirm base branch:
    - usually `main`
    - dependent feature branch only when prior task is not merged
-8. Confirm GitHub PR state after creation or update.
+12. After opening or editing the GitHub PR, run `gh pr view` and confirm the live PR body still follows the template.
+13. Confirm GitHub PR state after creation or update.
 
 PR output format:
 

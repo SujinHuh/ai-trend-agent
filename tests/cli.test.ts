@@ -399,6 +399,52 @@ describe("CLI", () => {
     }
   }, 30000);
 
+  it("enables injectable LLM digest enrichment for Slack preview only when requested", async () => {
+    const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
+
+    await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+
+    const stdout: string[] = [];
+    const provider = {
+      providerName: "fake",
+      modelName: "fake-digest",
+      generateDigestIntelligence: vi.fn(async (request: { candidates: Array<{ trendItemId: string }> }) => ({
+        rawText: JSON.stringify({
+          items: [
+            {
+              trendItemId: request.candidates[0]?.trendItemId,
+              summary: "LLM CLI summary",
+              whyItMatters: "LLM CLI why",
+              practicalImpact: "LLM CLI impact",
+              importanceScore: 88,
+              actionLevel: "do_now"
+            }
+          ]
+        }),
+        usage: {
+          inputTokens: 50,
+          outputTokens: 20
+        }
+      }))
+    };
+
+    await runCliCommand(
+      ["slack:preview", `--config=${configPath}`, `--db=${dbPath}`, `--date=${reportDate}`, "--limit=5", "--llm-digest"],
+      {
+        llmDigestProvider: provider,
+        stdout: (value) => stdout.push(value)
+      }
+    );
+
+    expect(provider.generateDigestIntelligence).toHaveBeenCalledTimes(1);
+    expect(stdout.join("\n")).toContain("LLM CLI summary");
+  }, 30000);
+
   it("refuses Slack send without SLACK_WEBHOOK_URL before network", async () => {
     const { dbPath, configPath, cacheRoot, reportDate } = await prepareSingleCandidateFixture();
 

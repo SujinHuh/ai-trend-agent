@@ -1,9 +1,10 @@
 import type { LlmWikiStore } from "../db/llm-wiki-store.js";
 import type { CronRun, CronRunMode, SlackDeliveryAttempt, SlackWebhookPayload } from "../domain/types.js";
+import type { DigestIntelligenceProvider } from "../llm/digest-intelligence.js";
 import { ingestSources } from "../sources/ingest-sources.js";
 import type { SourceFetcher } from "../sources/fetch-cache.js";
 import type { NormalizedSourceConfig } from "../sources/source-config.js";
-import { buildSlackDigest, sendSlackDigest, type SlackWebhookSender } from "../slack/send-slack-digest.js";
+import { buildSlackDigestAsync, sendSlackDigest, type SlackWebhookSender } from "../slack/send-slack-digest.js";
 import { redactSecretText } from "../slack/slack-webhook.js";
 
 export const DEFAULT_CRON_LIMIT = 5;
@@ -21,6 +22,8 @@ export interface RunHermesCronInput {
   webhookUrl?: string;
   sendSlackWebhook?: SlackWebhookSender;
   fetcher?: SourceFetcher;
+  llmDigestProvider?: DigestIntelligenceProvider | null;
+  enableLlmDigestIntelligence?: boolean;
   now?: () => Date;
 }
 
@@ -104,11 +107,15 @@ export async function runHermesCron(input: RunHermesCronInput): Promise<RunHerme
     });
 
     if (mode === "dry_run") {
-      const built = buildSlackDigest({
+      const built = await buildSlackDigestAsync({
         store: input.store,
         reportDate,
         sources: input.sources,
-        limit
+        limit,
+        ...(input.llmDigestProvider === undefined ? {} : { llmDigestProvider: input.llmDigestProvider }),
+        ...(input.enableLlmDigestIntelligence === undefined
+          ? {}
+          : { enableLlmDigestIntelligence: input.enableLlmDigestIntelligence })
       });
       candidateCount = built.candidateCount;
       payload = built.payload;
@@ -124,6 +131,10 @@ export async function runHermesCron(input: RunHermesCronInput): Promise<RunHerme
         sources: input.sources,
         limit,
         webhookUrl,
+        ...(input.llmDigestProvider === undefined ? {} : { llmDigestProvider: input.llmDigestProvider }),
+        ...(input.enableLlmDigestIntelligence === undefined
+          ? {}
+          : { enableLlmDigestIntelligence: input.enableLlmDigestIntelligence }),
         ...(input.force === undefined ? {} : { forceSend: input.force }),
         ...(input.sendSlackWebhook === undefined ? {} : { sendSlackWebhook: input.sendSlackWebhook })
       });

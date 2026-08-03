@@ -7,6 +7,7 @@ import { runHermesCron } from "./cron/run-hermes-cron.js";
 import type { DigestCandidate, DigestWithItems, SocialSignalItem } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
+import type { DigestIntelligenceProvider } from "./llm/digest-intelligence.js";
 import { resolveProjectPath } from "./security/path-scope.js";
 import type { SourceFetcher } from "./sources/fetch-cache.js";
 import { ingestSources } from "./sources/ingest-sources.js";
@@ -14,7 +15,7 @@ import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-
 import { runTrendSynthesis } from "./synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js";
 import { renderSlackDigest } from "./slack/render-slack-digest.js";
-import { buildSlackDigest, sendSlackDigest, type SlackWebhookSender } from "./slack/send-slack-digest.js";
+import { buildSlackDigestAsync, sendSlackDigest, type SlackWebhookSender } from "./slack/send-slack-digest.js";
 import { sendSlackWebhook as defaultSendSlackWebhook } from "./slack/slack-webhook.js";
 import { importManualSocialSignals } from "./social/manual-import.js";
 import {
@@ -37,6 +38,7 @@ interface CliOptions {
   dryRun: boolean;
   send: boolean;
   force: boolean;
+  llmDigestIntelligence: boolean;
   cacheRoot?: string;
   date?: string;
   limit: number;
@@ -47,6 +49,7 @@ interface CliOptions {
 interface CliDependencies {
   env?: Record<string, string | undefined>;
   sendSlackWebhook?: SlackWebhookSender;
+  llmDigestProvider?: DigestIntelligenceProvider | null;
   fetcher?: SourceFetcher;
   stdout?: (value: string) => void;
 }
@@ -85,7 +88,7 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
       writeWikiIndex(options);
       break;
     case "slack:preview":
-      previewSlack(options);
+      await previewSlack(options, dependencies);
       break;
     case "slack:send":
       await sendSlack(options, dependencies);
@@ -511,25 +514,28 @@ function writeWikiIndex(options: CliOptions): void {
   }
 }
 
-function previewSlack(options: CliOptions): void {
+async function previewSlack(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
   if (options.date === undefined) {
     throw new Error("Missing required option: --date=YYYY-MM-DD");
   }
 
-  const { db, store } = openStore(options.dbPath);
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
 
   try {
     store.initialize();
-    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
       includeDisabled: true
     });
-    const built = buildSlackDigest({
+    const built = await buildSlackDigestAsync({
       store,
       reportDate: options.date,
       sources,
-      limit: options.limit
+      limit: options.limit,
+      enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider })
     });
-    console.log(
+    (dependencies.stdout ?? console.log)(
       JSON.stringify(
         {
           reportDate: options.date,
@@ -571,6 +577,8 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
       limit: options.limit,
       webhookUrl,
       forceSend: options.forceSend,
+      enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
       sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook
     });
 
@@ -608,6 +616,8 @@ async function runCron(options: CliOptions, dependencies: CliDependencies = {}):
       limit: options.limit,
       force: options.force,
       forceRefresh: options.forceRefresh,
+      enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
       sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
       ...(options.date === undefined ? {} : { reportDate: options.date }),
       ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
@@ -639,6 +649,8 @@ async function serveCron(options: CliOptions, dependencies: CliDependencies = {}
         limit: options.limit,
         force: request.force === true || options.force,
         forceRefresh: options.forceRefresh,
+        enableLlmDigestIntelligence: options.llmDigestIntelligence,
+        ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
         sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
         ...(request.reportDate === undefined ? {} : { reportDate: request.reportDate }),
         ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
@@ -706,6 +718,7 @@ function parseOptions(args: string[]): CliOptions {
     dryRun: false,
     send: false,
     force: false,
+    llmDigestIntelligence: process.env.LLM_DIGEST_ENABLED === "true",
     port: 3000,
     limit: 5
   };
@@ -733,6 +746,8 @@ function parseOptions(args: string[]): CliOptions {
       options.send = true;
     } else if (arg === "--force") {
       options.force = true;
+    } else if (arg === "--llm-digest") {
+      options.llmDigestIntelligence = true;
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
     } else if (arg.startsWith("--limit=")) {
@@ -877,6 +892,7 @@ function printUsageAndExit(command: string | undefined): never {
       "  --cache-root=PATH  Override the source cache root",
       "  --force-refresh    Bypass source cache",
       "  --force-send       Allow slack:send to resend an identical successful payload",
+      "  --llm-digest       Enable injectable LLM digest enrichment when a provider is configured",
       "  --limit=N          Limit candidate output",
       "  --out=PATH         Output path for wiki:index"
     ].join("\n")
