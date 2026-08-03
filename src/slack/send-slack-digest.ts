@@ -5,6 +5,7 @@ import { enrichDigestCandidatesWithLlm } from "../llm/digest-intelligence.js";
 import type { SourceDomain, NormalizedSourceConfig } from "../sources/source-config.js";
 import { runTrendSynthesis } from "../synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "../synthesis/select-digest-candidates.js";
+import { createSourceMetadataByName } from "../synthesis/source-lineage.js";
 import { renderSlackDigest } from "./render-slack-digest.js";
 import { createPayloadHash, sendSlackWebhook as defaultSendSlackWebhook } from "./slack-webhook.js";
 
@@ -17,6 +18,7 @@ export interface BuildSlackDigestInput {
   limit: number;
   llmDigestProvider?: DigestIntelligenceProvider | null;
   enableLlmDigestIntelligence?: boolean;
+  userProfileId?: string;
 }
 
 export interface BuiltSlackDigest {
@@ -41,10 +43,11 @@ export interface SendSlackDigestResult {
 }
 
 export function buildSlackDigest(input: BuildSlackDigestInput): BuiltSlackDigest {
+  const sources = resolvePersonalizedSources(input);
   runTrendSynthesis({
     store: input.store,
     reportDate: input.reportDate,
-    sources: input.sources,
+    sources,
     limit: input.limit
   });
   if (input.enableLlmDigestIntelligence === true && input.llmDigestProvider != null) {
@@ -54,13 +57,15 @@ export function buildSlackDigest(input: BuildSlackDigestInput): BuiltSlackDigest
     store: input.store,
     reportDate: input.reportDate,
     limit: input.limit,
-    allowedSourceNames: createAllowedSourceNames(input.sources)
+    allowedSourceNames: createAllowedSourceNames(sources),
+    metadataByName: createSourceMetadataByName(input.sources),
+    ...(input.userProfileId === undefined ? {} : { userProfileId: input.userProfileId })
   });
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
     candidates,
     limit: input.limit,
-    sourceDomainsByName: createSourceDomainsByName(input.sources)
+    sourceDomainsByName: createSourceDomainsByName(sources)
   });
   const payloadHash = createPayloadHash(JSON.stringify(payload));
 
@@ -73,10 +78,11 @@ export function buildSlackDigest(input: BuildSlackDigestInput): BuiltSlackDigest
 }
 
 export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promise<BuiltSlackDigest> {
+  const sources = resolvePersonalizedSources(input);
   runTrendSynthesis({
     store: input.store,
     reportDate: input.reportDate,
-    sources: input.sources,
+    sources,
     limit: input.limit
   });
   await enrichDigestCandidatesWithLlm({
@@ -90,13 +96,15 @@ export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promi
     store: input.store,
     reportDate: input.reportDate,
     limit: input.limit,
-    allowedSourceNames: createAllowedSourceNames(input.sources)
+    allowedSourceNames: createAllowedSourceNames(sources),
+    metadataByName: createSourceMetadataByName(input.sources),
+    ...(input.userProfileId === undefined ? {} : { userProfileId: input.userProfileId })
   });
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
     candidates,
     limit: input.limit,
-    sourceDomainsByName: createSourceDomainsByName(input.sources)
+    sourceDomainsByName: createSourceDomainsByName(sources)
   });
   const payloadHash = createPayloadHash(JSON.stringify(payload));
 
@@ -114,6 +122,17 @@ function createSourceDomainsByName(sources: NormalizedSourceConfig[]): Map<strin
 
 function createAllowedSourceNames(sources: NormalizedSourceConfig[]): Set<string> {
   return new Set(sources.map((source) => source.name));
+}
+
+function resolvePersonalizedSources(input: BuildSlackDigestInput): NormalizedSourceConfig[] {
+  if (input.userProfileId === undefined) {
+    return input.sources;
+  }
+  const profile = input.store.getUserInterestProfile(input.userProfileId);
+  if (profile === null) {
+    throw new Error(`Unknown user profile: ${input.userProfileId}`);
+  }
+  return input.sources.filter((source) => profile.enabledDomains.includes(source.domain));
 }
 
 export async function sendSlackDigest(input: SendSlackDigestInput): Promise<SendSlackDigestResult> {

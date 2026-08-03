@@ -13,6 +13,138 @@ function openInitializedStore() {
 }
 
 describe("LlmWikiStore", () => {
+  it("stores normalized user profiles and preserves defaults on partial updates", () => {
+    const { db, store } = openInitializedStore();
+    const created = store.saveUserInterestProfile({
+      id: " U123 ",
+      highPriorityTags: ["Models", "models", " Coding-Agent "],
+      mutedTags: ["Business"],
+      enabledDomains: ["backend", "ai"],
+      preferredDeliveryTime: "08:30",
+      updatedAt: "2026-08-03T15:20:00.000Z"
+    });
+
+    expect(created).toMatchObject({
+      id: "U123",
+      highPriorityTags: ["coding-agent", "models"],
+      normalPriorityTags: [],
+      mutedTags: ["business"],
+      enabledDomains: ["ai", "backend"],
+      blockedKeywords: [],
+      preferredDeliveryTime: "08:30",
+      timezone: "Asia/Seoul"
+    });
+
+    const updated = store.saveUserInterestProfile({
+      id: "U123",
+      blockedKeywords: [" Crypto ", "crypto"],
+      updatedAt: "2026-08-03T15:21:00.000Z"
+    });
+    expect(updated.highPriorityTags).toEqual(["coding-agent", "models"]);
+    expect(updated.blockedKeywords).toEqual(["crypto"]);
+    expect(updated.createdAt).toBe(created.createdAt);
+    expect(updated.updatedAt).toBe("2026-08-03T15:21:00.000Z");
+
+    expect(() => store.saveUserInterestProfile({ id: "bad-time", preferredDeliveryTime: "25:00" })).toThrow(
+      /HH:MM/
+    );
+    expect(() =>
+      store.saveUserInterestProfile({ id: "bad-domain", enabledDomains: ["mobile" as "ai"] })
+    ).toThrow(/enabledDomains/);
+    db.close();
+  });
+
+  it("stores append-only feedback idempotently and exposes newest actions first", () => {
+    const { db, store } = openInitializedStore();
+    store.saveUserInterestProfile({ id: "U123", updatedAt: "2026-08-03T15:20:00.000Z" });
+    const item = store.saveTrendItem({
+      sourceUrl: "https://example.com/personalized",
+      title: "Personalized item",
+      sourceName: "Example",
+      publishedAt: "2026-08-03T00:00:00.000Z"
+    });
+    const interested = store.savePersonalizationFeedback({
+      eventKey: "slack-event-1",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "interested",
+      occurredAt: "2026-08-03T15:20:00.000Z"
+    });
+    const retried = store.savePersonalizationFeedback({
+      eventKey: "slack-event-1",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "interested",
+      occurredAt: "2026-08-03T15:20:00.000Z"
+    });
+    const hidden = store.savePersonalizationFeedback({
+      eventKey: "slack-event-2",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "hide",
+      occurredAt: "2026-08-03T15:21:00.000Z"
+    });
+
+    expect(retried).toEqual(interested);
+    expect(db.prepare("SELECT COUNT(*) FROM personalization_feedback").pluck().get()).toBe(2);
+    expect(store.listPersonalizationFeedback("U123")).toEqual([hidden, interested]);
+    expect(() =>
+      store.savePersonalizationFeedback({
+        eventKey: "slack-event-1",
+        userProfileId: "U123",
+        trendItemId: item.id,
+        action: "hide",
+        occurredAt: "2026-08-03T15:20:00.000Z"
+      })
+    ).toThrow(/different content/);
+    expect(() =>
+      store.savePersonalizationFeedback({
+        eventKey: "missing-profile",
+        userProfileId: "missing",
+        trendItemId: item.id,
+        action: "interested",
+        occurredAt: "2026-08-03T15:22:00.000Z"
+      })
+    ).toThrow(/Unknown user profile/);
+    db.close();
+  });
+
+  it("normalizes feedback timestamps and applies deterministic cutoffs", () => {
+    const { db, store } = openInitializedStore();
+    store.saveUserInterestProfile({ id: "U123", updatedAt: "2026-08-03T00:00:00.000Z" });
+    const item = store.saveTrendItem({
+      sourceUrl: "https://example.com/timezones",
+      title: "Timezone feedback",
+      sourceName: "Example",
+      publishedAt: null
+    });
+    const first = store.savePersonalizationFeedback({
+      eventKey: "timezone-1",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "interested",
+      occurredAt: "2026-08-03T20:00:00+09:00"
+    });
+    const second = store.savePersonalizationFeedback({
+      eventKey: "timezone-2",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "hide",
+      occurredAt: "2026-08-03T12:00:00Z"
+    });
+
+    expect(first.occurredAt).toBe("2026-08-03T11:00:00.000Z");
+    expect(store.listPersonalizationFeedback("U123")).toEqual([second, first]);
+    expect(store.listPersonalizationFeedback("U123", "2026-08-03T11:30:00Z")).toEqual([first]);
+    expect(store.savePersonalizationFeedback({
+      eventKey: "timezone-1",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "interested",
+      occurredAt: "2026-08-03T13:00:00Z"
+    })).toEqual(first);
+    db.close();
+  });
   it("saves and reads a TrendItem using canonical URL identity", () => {
     const { db, store } = openInitializedStore();
 

@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 
 import { createCronHttpServer } from "./cron/cron-http-server.js";
 import { runHermesCron } from "./cron/run-hermes-cron.js";
-import type { DigestCandidate, DigestWithItems, SocialSignalItem } from "./domain/types.js";
+import type {
+  DigestCandidate,
+  DigestWithItems,
+  PersonalizationFeedbackAction,
+  SocialSignalItem
+} from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
 import { openSqliteDatabase } from "./db/sqlite.js";
 import type { DigestIntelligenceProvider } from "./llm/digest-intelligence.js";
@@ -50,6 +55,17 @@ interface CliOptions {
   limit: number;
   outPath?: string;
   port: number;
+  userProfileId?: string;
+  feedbackAction?: PersonalizationFeedbackAction;
+  feedbackEventKey?: string;
+  trendItemId?: string;
+  occurredAt?: string;
+  highPriorityTags?: string[];
+  normalPriorityTags?: string[];
+  mutedTags?: string[];
+  blockedKeywords?: string[];
+  profileEnabledDomains?: SourceDomain[];
+  preferredDeliveryTime?: string;
 }
 
 interface CliDependencies {
@@ -117,6 +133,18 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
       break;
     case "social:poll":
       await pollSocial(options, dependencies);
+      break;
+    case "profile:update":
+      updateUserProfile(options, dependencies);
+      break;
+    case "profile:get":
+      getUserProfile(options, dependencies);
+      break;
+    case "feedback:record":
+      recordPersonalizationFeedback(options, dependencies);
+      break;
+    case "personalization:preview":
+      await previewPersonalizedDigest(options, dependencies);
       break;
     default:
       printUsageAndExit(command);
@@ -546,6 +574,7 @@ async function previewSlack(options: CliOptions, dependencies: CliDependencies =
       sources,
       limit: options.limit,
       enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(options.userProfileId === undefined ? {} : { userProfileId: options.userProfileId }),
       ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider })
     });
     (dependencies.stdout ?? console.log)(
@@ -591,6 +620,7 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
       webhookUrl,
       forceSend: options.forceSend,
       enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(options.userProfileId === undefined ? {} : { userProfileId: options.userProfileId }),
       ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
       sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook
     });
@@ -632,6 +662,7 @@ async function runCron(options: CliOptions, dependencies: CliDependencies = {}):
       force: options.force,
       forceRefresh: options.forceRefresh,
       enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(options.userProfileId === undefined ? {} : { userProfileId: options.userProfileId }),
       ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
       sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
       ...(options.date === undefined ? {} : { reportDate: options.date }),
@@ -667,6 +698,7 @@ async function serveCron(options: CliOptions, dependencies: CliDependencies = {}
         force: request.force === true || options.force,
         forceRefresh: options.forceRefresh,
         enableLlmDigestIntelligence: options.llmDigestIntelligence,
+        ...(options.userProfileId === undefined ? {} : { userProfileId: options.userProfileId }),
         ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider }),
         sendSlackWebhook: dependencies.sendSlackWebhook ?? defaultSendSlackWebhook,
         ...(request.reportDate === undefined ? {} : { reportDate: request.reportDate }),
@@ -703,6 +735,105 @@ function resolveCronMode(options: CliOptions, env: Record<string, string | undef
   return "dry_run";
 }
 
+function updateUserProfile(options: CliOptions, dependencies: CliDependencies = {}): void {
+  const userProfileId = requireUserProfileId(options);
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  try {
+    store.initialize();
+    const profile = store.saveUserInterestProfile({
+      id: userProfileId,
+      ...(options.highPriorityTags === undefined ? {} : { highPriorityTags: options.highPriorityTags }),
+      ...(options.normalPriorityTags === undefined ? {} : { normalPriorityTags: options.normalPriorityTags }),
+      ...(options.mutedTags === undefined ? {} : { mutedTags: options.mutedTags }),
+      ...(options.blockedKeywords === undefined ? {} : { blockedKeywords: options.blockedKeywords }),
+      ...(options.profileEnabledDomains === undefined ? {} : { enabledDomains: options.profileEnabledDomains }),
+      ...(options.preferredDeliveryTime === undefined ? {} : { preferredDeliveryTime: options.preferredDeliveryTime })
+    });
+    (dependencies.stdout ?? console.log)(JSON.stringify({ profile }, null, 2));
+  } finally {
+    db.close();
+  }
+}
+
+function getUserProfile(options: CliOptions, dependencies: CliDependencies = {}): void {
+  const userProfileId = requireUserProfileId(options);
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  try {
+    store.initialize();
+    const profile = store.getUserInterestProfile(userProfileId);
+    const feedback = profile === null ? [] : store.listPersonalizationFeedback(userProfileId);
+    (dependencies.stdout ?? console.log)(JSON.stringify({ profile, feedback }, null, 2));
+  } finally {
+    db.close();
+  }
+}
+
+function recordPersonalizationFeedback(options: CliOptions, dependencies: CliDependencies = {}): void {
+  const userProfileId = requireUserProfileId(options);
+  if (options.feedbackAction === undefined || options.feedbackEventKey === undefined || options.trendItemId === undefined) {
+    throw new Error("feedback:record requires --action, --event-key, and --trend-item");
+  }
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  try {
+    store.initialize();
+    if (store.getUserInterestProfile(userProfileId) === null) {
+      store.saveUserInterestProfile({ id: userProfileId });
+    }
+    const feedback = store.savePersonalizationFeedback({
+      eventKey: options.feedbackEventKey,
+      userProfileId,
+      trendItemId: options.trendItemId,
+      action: options.feedbackAction,
+      occurredAt: options.occurredAt ?? new Date().toISOString()
+    });
+    (dependencies.stdout ?? console.log)(JSON.stringify({ feedback }, null, 2));
+  } finally {
+    db.close();
+  }
+}
+
+async function previewPersonalizedDigest(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+  const userProfileId = requireUserProfileId(options);
+  const env = dependencies.env ?? process.env;
+  const { db, store } = openStore(options.dbPath, env);
+  try {
+    store.initialize();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+      enabledDomains: options.enabledDomains
+    });
+    const built = await buildSlackDigestAsync({
+      store,
+      reportDate: options.date,
+      sources,
+      limit: options.limit,
+      userProfileId,
+      enableLlmDigestIntelligence: options.llmDigestIntelligence,
+      ...(dependencies.llmDigestProvider === undefined ? {} : { llmDigestProvider: dependencies.llmDigestProvider })
+    });
+    (dependencies.stdout ?? console.log)(JSON.stringify({
+      reportDate: options.date,
+      userProfileId,
+      candidateCount: built.candidateCount,
+      payload: built.payload
+    }, null, 2));
+  } finally {
+    db.close();
+  }
+}
+
+function requireUserProfileId(options: CliOptions): string {
+  if (options.userProfileId === undefined || options.userProfileId.trim().length === 0) {
+    throw new Error("Missing required option: --user=ID");
+  }
+  return options.userProfileId;
+}
+
 function toCronOutput(result: Awaited<ReturnType<typeof runHermesCron>>) {
   return {
     reportDate: result.reportDate,
@@ -726,6 +857,7 @@ function openStore(dbPath: string, env: Record<string, string | undefined> = pro
 }
 
 function parseOptions(args: string[], env: Record<string, string | undefined> = process.env): CliOptions {
+  const personalizationUserId = normalizeOptionalValue(env.PERSONALIZATION_USER_ID);
   const options: CliOptions = {
     dbPath: env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
     sourceConfigPath: env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
@@ -736,6 +868,7 @@ function parseOptions(args: string[], env: Record<string, string | undefined> = 
     send: false,
     force: false,
     llmDigestIntelligence: env.LLM_DIGEST_ENABLED === "true",
+    ...(personalizationUserId === undefined ? {} : { userProfileId: personalizationUserId }),
     enabledDomains: parseEnabledDomains(env.ENABLED_DOMAINS),
     port: 3000,
     limit: 5
@@ -776,6 +909,32 @@ function parseOptions(args: string[], env: Record<string, string | undefined> = 
       options.outPath = arg.slice("--out=".length);
     } else if (arg.startsWith("--port=")) {
       options.port = parsePositiveInteger(arg.slice("--port=".length), "--port");
+    } else if (arg.startsWith("--user=")) {
+      options.userProfileId = arg.slice("--user=".length);
+    } else if (arg.startsWith("--action=")) {
+      options.feedbackAction = parseFeedbackAction(arg.slice("--action=".length));
+    } else if (arg.startsWith("--event-key=")) {
+      options.feedbackEventKey = arg.slice("--event-key=".length);
+    } else if (arg.startsWith("--trend-item=")) {
+      options.trendItemId = arg.slice("--trend-item=".length);
+    } else if (arg.startsWith("--occurred-at=")) {
+      options.occurredAt = parseIsoDateTime(arg.slice("--occurred-at=".length), "--occurred-at");
+    } else if (arg.startsWith("--high-priority-tags=")) {
+      options.highPriorityTags = parseCsv(arg.slice("--high-priority-tags=".length));
+    } else if (arg.startsWith("--normal-priority-tags=")) {
+      options.normalPriorityTags = parseCsv(arg.slice("--normal-priority-tags=".length));
+    } else if (arg.startsWith("--muted-tags=")) {
+      options.mutedTags = parseCsv(arg.slice("--muted-tags=".length));
+    } else if (arg.startsWith("--blocked-keywords=")) {
+      options.blockedKeywords = parseCsv(arg.slice("--blocked-keywords=".length));
+    } else if (arg.startsWith("--profile-domains=")) {
+      const profileDomains = parseEnabledDomains(arg.slice("--profile-domains=".length));
+      if (profileDomains === undefined) {
+        throw new Error("--profile-domains must include at least one domain");
+      }
+      options.profileEnabledDomains = profileDomains;
+    } else if (arg.startsWith("--delivery-time=")) {
+      options.preferredDeliveryTime = arg.slice("--delivery-time=".length);
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -870,6 +1029,30 @@ function parsePositiveInteger(value: string, label: string): number {
   return parsed;
 }
 
+function parseFeedbackAction(value: string): PersonalizationFeedbackAction {
+  if (value !== "interested" && value !== "save_later" && value !== "hide") {
+    throw new Error("--action must be interested, save_later, or hide");
+  }
+  return value;
+}
+
+function parseIsoDateTime(value: string, label: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${label} must be an ISO date-time`);
+  }
+  return date.toISOString();
+}
+
+function normalizeOptionalValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized === undefined || normalized.length === 0 ? undefined : normalized;
+}
+
+function parseCsv(value: string): string[] {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
 function parseReportDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new Error("--date must use YYYY-MM-DD format");
@@ -903,6 +1086,10 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run social:import -- --source-id=manual-public-ai-links --input=PATH",
       "  npm run social:list",
       "  npm run social:poll -- --date=YYYY-MM-DD --dry-run",
+      "  npm run profile:update -- --user=ID --high-priority-tags=models,agents",
+      "  npm run profile:get -- --user=ID",
+      "  npm run feedback:record -- --user=ID --trend-item=ID --action=interested --event-key=KEY",
+      "  npm run personalization:preview -- --user=ID --date=YYYY-MM-DD",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",

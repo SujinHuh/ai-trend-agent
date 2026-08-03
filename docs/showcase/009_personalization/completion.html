@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 009 Personalization Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17212b;
+        --muted: #52606d;
+        --line: #d8dee4;
+        --paper: #ffffff;
+        --page: #f4f6f8;
+        --green: #147d64;
+        --blue: #2463a8;
+        --amber: #9a6700;
+        --red: #b42318;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.6;
+        letter-spacing: 0;
+      }
+      main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 40px 0 64px; }
+      header { border-top: 4px solid var(--green); padding: 28px 0 24px; }
+      .status { color: var(--green); font-size: 14px; font-weight: 800; text-transform: uppercase; }
+      h1 { margin: 8px 0; font-size: clamp(32px, 5vw, 54px); line-height: 1.15; }
+      h2 { margin: 0 0 16px; font-size: 22px; }
+      p { margin: 0; }
+      .lead { max-width: 760px; color: var(--muted); font-size: 18px; }
+      .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--paper); }
+      .metric { min-height: 112px; padding: 20px; border-right: 1px solid var(--line); }
+      .metric:last-child { border-right: 0; }
+      .metric strong { display: block; font-size: 26px; color: var(--blue); }
+      .metric span { color: var(--muted); font-size: 14px; }
+      section { padding: 30px 0; border-bottom: 1px solid var(--line); }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; }
+      .item { padding-left: 14px; border-left: 3px solid var(--blue); }
+      .item strong { display: block; margin-bottom: 4px; }
+      .item p, li { color: var(--muted); }
+      ul { margin: 0; padding-left: 22px; }
+      code { background: #eef1f4; padding: 2px 5px; border-radius: 3px; }
+      pre { overflow-x: auto; margin: 0; padding: 18px; background: #111820; color: #e8eef4; border-radius: 6px; }
+      .review { border-left-color: var(--amber); }
+      .excluded { border-left-color: var(--red); }
+      a { color: var(--blue); }
+      footer { padding-top: 28px; color: var(--muted); font-size: 14px; }
+      @media (max-width: 720px) {
+        main { width: min(100% - 24px, 1040px); padding-top: 20px; }
+        .metrics, .grid { grid-template-columns: 1fr; }
+        .metric { border-right: 0; border-bottom: 1px solid var(--line); }
+        .metric:last-child { border-bottom: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 009 검증 완료</span>
+        <h1>Slack 피드백과 개인화</h1>
+        <p class="lead">사용자의 비민감 피드백을 저장하고 다음 digest의 노출 여부와 순서에 결정론적으로 반영합니다.</p>
+      </header>
+
+      <div class="metrics" aria-label="검증 지표">
+        <div class="metric"><strong>13 / 13</strong><span>하네스 단계</span></div>
+        <div class="metric"><strong>166 passed</strong><span>23개 테스트 파일</span></div>
+        <div class="metric"><strong>3 actions</strong><span>interested · save_later · hide</span></div>
+        <div class="metric"><strong>0 blockers</strong><span>최종 독립 재검수</span></div>
+      </div>
+
+      <section>
+        <h2>구현 내용</h2>
+        <div class="grid">
+          <div class="item"><strong>사용자 프로필</strong><p>high/normal/muted tags, enabled domains, blocked keywords, 발송 시각을 SQLite에 저장합니다.</p></div>
+          <div class="item"><strong>피드백 이벤트</strong><p>항목별 action을 append-only로 기록하고 unique event key로 재시도를 멱등 처리합니다.</p></div>
+          <div class="item"><strong>개인화 재정렬</strong><p>전체 후보 pool에서 필터와 제한된 boost를 적용한 뒤 최종 limit을 계산합니다.</p></div>
+          <div class="item"><strong>운영 연결</strong><p>Slack build/send, Hermes cron, CLI에 명시적 user profile opt-in을 연결했습니다.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>정책 경계</h2>
+        <ul>
+          <li>기존 importance, confidence, confirmation, action level은 변경하지 않습니다.</li>
+          <li><code>hide</code>는 항목만 제외하며 태그 전체를 자동 mute하지 않습니다.</li>
+          <li>profile domain은 runtime에서 활성화된 domain을 다시 켤 수 없습니다.</li>
+          <li>feedback은 profile 발송 시각 이전 이벤트만 해당 report date에 반영합니다.</li>
+          <li>profile 미지정 경로는 Task 008 payload와 순서를 유지합니다.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>독립 검수 반영</h2>
+        <div class="grid">
+          <div class="item review"><strong>시간과 재시도</strong><p>timezone offset을 UTC ISO로 정규화하고 순차·동시 event retry 경계를 보강했습니다.</p></div>
+          <div class="item review"><strong>후보 pool</strong><p>SQL top-N 이후 재정렬 문제를 제거해 관심 후보가 base top-N 밖에서도 승격될 수 있습니다.</p></div>
+          <div class="item review"><strong>스키마 안전성</strong><p>CHECK, UNIQUE, FK drift assertion과 version 7에서 8로의 upgrade 테스트를 추가했습니다.</p></div>
+          <div class="item review"><strong>도메인 경계</strong><p>full runtime metadata와 profile-filtered sources를 분리해 잘못된 AI fallback을 막았습니다.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>검증 결과</h2>
+        <pre>npm run typecheck: passed
+npm run build: passed
+npm test -- --run: 23 files / 166 tests passed
+git diff --check: passed</pre>
+      </section>
+
+      <section>
+        <h2>의도적으로 제외한 범위</h2>
+        <div class="item excluded">
+          <p>Slack OAuth/Bot 설치, interactive request endpoint, DM/thread/multi-workspace delivery, 실제 사용자 데이터, item별 tag persistence는 포함하지 않았습니다.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>다음 단계</h2>
+        <p>다음 v2 구현 단계는 <strong>Task 010 웹 뉴스 화면</strong>입니다. Slack interactive endpoint는 서명 검증과 replay 방어를 포함한 별도 보안 task로 진행할 수 있습니다.</p>
+      </section>
+
+      <section>
+        <h2>확인 문서</h2>
+        <ul>
+          <li><a href="../../task/009_personalization/requirements.md">requirements.md</a></li>
+          <li><a href="../../task/009_personalization/phase_status.md">phase_status.md</a></li>
+          <li><a href="../../task/009_personalization/validation_report.md">validation_report.md</a></li>
+        </ul>
+      </section>
+
+      <footer>AI Trend Agent · Task 009 Personalization Completion</footer>
+    </main>
+  </body>
+</html>

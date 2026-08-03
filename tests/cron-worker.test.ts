@@ -48,6 +48,52 @@ describe("runHermesCron", () => {
     }
   });
 
+  it("applies an opted-in user profile to the cron digest without changing the default path", async () => {
+    const { db, store } = openInitializedStore();
+    const item = store.saveTrendItem({
+      sourceUrl: "https://example.com/hermes-cron-model-api",
+      title: "Hermes cron model API release",
+      sourceName: "Fixture Feed",
+      publishedAt: "2026-07-31T16:00:00.000Z"
+    });
+    store.saveUserInterestProfile({ id: "U123", updatedAt: "2026-08-01T00:00:00.000Z" });
+    store.savePersonalizationFeedback({
+      eventKey: "cron-hide-1",
+      userProfileId: "U123",
+      trendItemId: item.id,
+      action: "hide",
+      occurredAt: "2026-07-31T21:00:00.000Z"
+    });
+
+    try {
+      const personalized = await runHermesCron({
+        store,
+        sources: [sourceConfig()],
+        reportDate: "2026-08-01",
+        mode: "dry_run",
+        userProfileId: "U123",
+        cacheRoot: tempCacheRoot(),
+        fetcher: async () => sourceResponse(),
+        now: fixedNow
+      });
+      const standard = await runHermesCron({
+        store,
+        sources: [sourceConfig()],
+        reportDate: "2026-08-01",
+        mode: "dry_run",
+        cacheRoot: tempCacheRoot(),
+        fetcher: async () => sourceResponse(),
+        now: () => new Date("2026-08-01T00:00:01.000Z")
+      });
+
+      expect(personalized.candidateCount).toBe(0);
+      expect(JSON.stringify(personalized.payload)).toContain("No ranked digest candidates");
+      expect(standard.candidateCount).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
+
   it("sends through an injectable Slack sender and records cron success", async () => {
     const { db, store } = openInitializedStore();
     const sendSlackWebhook = vi.fn(async (input) => ({

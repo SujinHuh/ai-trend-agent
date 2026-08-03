@@ -177,3 +177,47 @@ interface Report {
 ```
 
 Markdown 리포트는 이 `Report`를 사람이 읽을 수 있게 변환한 결과물이다.
+
+## 9. UserInterestProfile
+
+Task 009의 사용자별 비민감 개인화 설정이다.
+
+```ts
+interface UserInterestProfile {
+  id: string;
+  highPriorityTags: string[];
+  normalPriorityTags: string[];
+  mutedTags: string[];
+  enabledDomains: Array<"ai" | "backend" | "frontend" | "devops">;
+  blockedKeywords: string[];
+  preferredDeliveryTime: string;
+  timezone: "Asia/Seoul";
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- 배열 값은 lowercase, dedupe, sort 후 JSON으로 저장한다.
+- 기본 `enabledDomains`는 `ai`, 기본 발송 시각은 `07:00`이다.
+- Slack token, webhook URL, Signing Secret 같은 비밀값은 저장하지 않는다.
+
+## 10. PersonalizationFeedback
+
+```ts
+type PersonalizationFeedbackAction = "interested" | "save_later" | "hide";
+
+interface PersonalizationFeedback {
+  id: string;
+  eventKey: string;
+  userProfileId: string;
+  trendItemId: string;
+  action: PersonalizationFeedbackAction;
+  occurredAt: string;
+  createdAt: string;
+}
+```
+
+- feedback은 append-only event로 저장한다.
+- `eventKey`는 Slack retry나 CLI 재시도의 멱등 키이며 unique다.
+- 같은 사용자의 같은 항목은 가장 최근 event를 현재 action으로 해석한다.
+- `hide`는 항목만 제외하며 자동으로 태그 전체를 mute하지 않는다.

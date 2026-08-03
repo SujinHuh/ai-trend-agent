@@ -39,6 +39,71 @@ async function runCli(command: string, args: string[] = [], env: NodeJS.ProcessE
 }
 
 describe("CLI", () => {
+  it("updates profiles, records idempotent feedback, and previews personalization", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "personalization-cli-")), "wiki.sqlite");
+    const db = openSqliteDatabase(dbPath);
+    const store = createLlmWikiStore(db);
+    store.initialize();
+    const item = store.saveTrendItem({
+      sourceUrl: "https://example.com/personalization-cli",
+      title: "Personalization CLI item",
+      sourceName: "Example",
+      publishedAt: "2026-08-03T00:00:00.000Z"
+    });
+    db.close();
+
+    const outputs: string[] = [];
+    const dependencies = {
+      env: { AI_TREND_ALLOW_EXTERNAL_PATHS: "true" },
+      stdout: (value: string) => outputs.push(value)
+    };
+    await runCliCommand([
+      "profile:update",
+      `--db=${dbPath}`,
+      "--user=U123",
+      "--high-priority-tags=Models,Coding-Agent",
+      "--muted-tags=business",
+      "--profile-domains=ai",
+      "--delivery-time=08:30"
+    ], dependencies);
+    const feedbackCommand = [
+      "feedback:record",
+      `--db=${dbPath}`,
+      "--user=U123",
+      `--trend-item=${item.id}`,
+      "--action=interested",
+      "--event-key=cli-event-1"
+    ];
+    await runCliCommand(feedbackCommand, dependencies);
+    await runCliCommand(feedbackCommand, dependencies);
+    await runCliCommand(["profile:get", `--db=${dbPath}`, "--user=U123"], dependencies);
+    await runCliCommand([
+      "personalization:preview",
+      `--db=${dbPath}`,
+      "--user=U123",
+      "--date=2026-08-03"
+    ], dependencies);
+
+    expect(JSON.parse(outputs[0] ?? "{}")).toMatchObject({
+      profile: {
+        id: "U123",
+        highPriorityTags: ["coding-agent", "models"],
+        mutedTags: ["business"],
+        enabledDomains: ["ai"],
+        preferredDeliveryTime: "08:30"
+      }
+    });
+    expect(JSON.parse(outputs[1] ?? "{}")).toMatchObject({ feedback: { action: "interested" } });
+    expect(JSON.parse(outputs[2] ?? "{}")).toEqual(JSON.parse(outputs[1] ?? "{}"));
+    expect(JSON.parse(outputs[3] ?? "{}")).toMatchObject({
+      profile: { id: "U123" },
+      feedback: [{ eventKey: "cli-event-1" }]
+    });
+    expect(JSON.parse(outputs[4] ?? "{}")).toMatchObject({
+      userProfileId: "U123",
+      candidateCount: 0
+    });
+  });
   it("initializes, seeds, and reads a sample digest from an isolated SQLite file", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "llm-wiki-cli-")), "wiki.sqlite");
 

@@ -24,6 +24,7 @@ export interface RunHermesCronInput {
   fetcher?: SourceFetcher;
   llmDigestProvider?: DigestIntelligenceProvider | null;
   enableLlmDigestIntelligence?: boolean;
+  userProfileId?: string;
   now?: () => Date;
 }
 
@@ -115,7 +116,8 @@ export async function runHermesCron(input: RunHermesCronInput): Promise<RunHerme
         ...(input.llmDigestProvider === undefined ? {} : { llmDigestProvider: input.llmDigestProvider }),
         ...(input.enableLlmDigestIntelligence === undefined
           ? {}
-          : { enableLlmDigestIntelligence: input.enableLlmDigestIntelligence })
+          : { enableLlmDigestIntelligence: input.enableLlmDigestIntelligence }),
+        ...(input.userProfileId === undefined ? {} : { userProfileId: input.userProfileId })
       });
       candidateCount = built.candidateCount;
       payload = built.payload;
@@ -135,6 +137,7 @@ export async function runHermesCron(input: RunHermesCronInput): Promise<RunHerme
         ...(input.enableLlmDigestIntelligence === undefined
           ? {}
           : { enableLlmDigestIntelligence: input.enableLlmDigestIntelligence }),
+        ...(input.userProfileId === undefined ? {} : { userProfileId: input.userProfileId }),
         ...(input.force === undefined ? {} : { forceSend: input.force }),
         ...(input.sendSlackWebhook === undefined ? {} : { sendSlackWebhook: input.sendSlackWebhook })
       });
