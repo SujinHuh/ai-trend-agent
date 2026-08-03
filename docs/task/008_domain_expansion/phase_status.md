@@ -14,7 +14,7 @@
 | 10 | Tests | Done | 단위/통합/회귀 테스트 작성과 focused validation 통과. |
 | 11 | Validation report | Done | typecheck, build, full test, diff check 결과 기록. |
 | 12 | Completion showcase | Done | 한글 md/html 작성, GCP public URL HTTP 200 확인. |
-| 13 | PR and handoff | Pending | PR 템플릿 확인 후 한글 PR 작성. |
+| 13 | PR and handoff | Done | PR #11 opened, Korean PR template body confirmed with `gh pr view`. |
 
 ## Progress Log
 
@@ -32,3 +32,4 @@
 - Step 10 `Done`: source config, source ingest, ranking, Slack renderer, CLI, cron, LLM digest 관련 focused tests 통과.
 - Step 11 `Done`: `npm run typecheck`, `npm run build`, `npm test` 22 files / 152 tests, `git diff --check` 통과.
 - Step 12 `Done`: completion markdown/html 작성 완료, GCP 공개 URL HTTP 200과 본문 확인.
+- Step 13 `Done`: `.github/PULL_REQUEST_TEMPLATE.md`, `docs/pr-template.md` 재확인 후 한글 PR 문서 작성, PR #11 생성, `gh pr view`로 실제 본문 확인.
