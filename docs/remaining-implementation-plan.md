@@ -27,13 +27,14 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 17 | official-source cross-confirmation | Task 007 | Done | Ranking + Social signal agents | canonical outbound URL과 existing SourceEvidence 매칭 구현 |
 | 18 | X live collector | 007B social live collectors | Deferred | Social signal agent | X API token scope, rate limit, billing/policy 확인 후 구현 |
 | 19 | Threads live collector | 007B social live collectors | Deferred | Social signal agent | Meta API scope, app review, rate limit 확인 후 구현 |
-| 20 | HN/Reddit live polling runner | 007B social live collectors | Review | Social signal agent | PR #9에서 opt-in HN Firebase API와 Reddit RSS live polling 구현 |
+| 20 | HN/Reddit live polling runner | 007B social live collectors | Done | Social signal agent | opt-in HN Firebase API와 Reddit RSS live polling 구현 |
 | 21 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
 | 22 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
 | 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
-| 24 | LLM summary provider integration | 007C LLM digest intelligence | Review | Hermes/Ranking agent | Top 5-10 후보 LLM enrichment, provider abstraction, prompt redaction, Slack opt-in handoff 구현 |
-| 25 | LLM token/cost logging | 007C LLM digest intelligence | Review | Ops/Ranking agent | 별도 `llm_usage_logs` 테이블에 input/output tokens, estimated cost 기록 |
+| 24 | LLM summary provider integration | 007C LLM digest intelligence | Done | Hermes/Ranking agent | Top 5-10 후보 LLM enrichment, provider abstraction, prompt redaction, Slack opt-in handoff 구현 |
+| 25 | LLM token/cost logging | 007C LLM digest intelligence | Done | Ops/Ranking agent | 별도 `llm_usage_logs` 테이블에 input/output tokens, estimated cost 기록 |
 | 26 | user interest reranking | Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
+| 27 | Backend/Frontend/DevOps domain expansion | Task 008 | Review | Domain expansion agent | source domain schema, `enabledDomains`, ranking weight, Slack domain section, CLI/cron handoff 구현 |
 
 ## 진행 원칙
 
@@ -41,10 +42,11 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 2. Task 007은 social/trusted source 수집 MVP를 구현한다.
 3. Lint는 Task 003에서 최소 정책을 남기고, command 구현은 별도 later lint task로 분리한다.
 4. X/Threads/Reddit/HN 신호는 공식 출처로 확인되기 전까지 `needs_confirmation`이다.
-5. X/Threads live collector는 policy/token review 전까지 Deferred이고, HN/Reddit live polling runner는 007B PR review 상태다.
+5. X/Threads live collector는 policy/token review 전까지 Deferred이고, HN/Reddit live polling runner는 007B에서 구현됐다.
 6. 크롤링, 저장, Slack 발송만으로는 LLM token 비용이 발생하지 않는다.
-7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석은 007C PR review 상태이고, 개인 관심사 기반 재정렬은 Task 009 범위다.
+7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석은 007C에서 구현됐고, 개인 관심사 기반 재정렬은 Task 009 범위다.
 8. LLM 적용은 전체 수집 결과가 아니라 deterministic ranking 상위 5-10개 후보부터 시작한다.
+9. Backend, Frontend, DevOps 도메인 확장은 Task 008에서 구현됐고, 기본 enabled domain은 계속 `ai`다.
 
 ## Task 003 최소 Done Criteria
 

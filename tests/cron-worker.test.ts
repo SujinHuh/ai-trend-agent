@@ -269,6 +269,41 @@ describe("runHermesCron", () => {
       db.close();
     }
   });
+
+  it("excludes previously stored disabled-domain items from later AI-only Slack payloads", async () => {
+    const { db, store } = openInitializedStore();
+    const now = sequentialNow();
+
+    try {
+      const backendRun = await runHermesCron({
+        store,
+        sources: [sourceConfig({ id: "backend-feed", name: "Backend Feed", domain: "backend" })],
+        reportDate: "2026-08-01",
+        mode: "dry_run",
+        cacheRoot: tempCacheRoot(),
+        fetcher: async () => sourceResponse("Backend runtime release", "backend-runtime"),
+        now
+      });
+      const aiRun = await runHermesCron({
+        store,
+        sources: [sourceConfig()],
+        reportDate: "2026-08-01",
+        mode: "dry_run",
+        cacheRoot: tempCacheRoot(),
+        fetcher: async () => sourceResponse("Hermes cron model API release", "hermes-cron-model-api"),
+        now
+      });
+      const renderedPayload = JSON.stringify(aiRun.payload);
+
+      expect(backendRun.candidateCount).toBe(1);
+      expect(aiRun.candidateCount).toBe(1);
+      expect(renderedPayload).toContain("Hermes cron model API release");
+      expect(renderedPayload).not.toContain("Backend runtime release");
+      expect(renderedPayload).not.toContain("Backend Signals");
+    } finally {
+      db.close();
+    }
+  });
 });
 
 function openInitializedStore() {
@@ -278,17 +313,20 @@ function openInitializedStore() {
   return { db, store };
 }
 
-function sourceConfig(): NormalizedSourceConfig {
+function sourceConfig(
+  overrides: Partial<Pick<NormalizedSourceConfig, "id" | "name" | "domain">> = {}
+): NormalizedSourceConfig {
   return {
-    id: "fixture-feed",
-    name: "Fixture Feed",
+    id: overrides.id ?? "fixture-feed",
+    name: overrides.name ?? "Fixture Feed",
     type: "atom",
-    url: "https://example.com/feed.atom",
+    url: `https://example.com/${overrides.id ?? "fixture-feed"}.atom`,
+    domain: overrides.domain ?? "ai",
     category: "llm_vendor",
     credibility: "official",
     enabled: true,
     priority: 5,
-    tags: ["ai"],
+    tags: [overrides.domain ?? "ai"],
     official: true,
     parserType: "atom_parser",
     timezone: "UTC",
@@ -313,7 +351,7 @@ function sourceConfig(): NormalizedSourceConfig {
   };
 }
 
-function sourceResponse() {
+function sourceResponse(title = "Hermes cron model API release", slug = "hermes-cron-model-api") {
   return {
     status: 200,
     headers: {
@@ -322,10 +360,10 @@ function sourceResponse() {
     body: [
       "<feed>",
       "<entry>",
-      "<title>Hermes cron model API release</title>",
-      "<link href=\"https://example.com/hermes-cron-model-api\" />",
+      `<title>${title}</title>`,
+      `<link href="https://example.com/${slug}" />`,
       "<published>2026-07-31T16:00:00Z</published>",
-      "<summary>Official model API release for Hermes cron.</summary>",
+      `<summary>${title} for Hermes cron.</summary>`,
       "</entry>",
       "</feed>"
     ].join("")

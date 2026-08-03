@@ -550,3 +550,26 @@ Task 007C GCP nginx 공개 URL:
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/007C_llm_digest_intelligence/completion.html
 ```
+
+Task 008 완료 확인 산출물:
+
+- [docs/showcase/008_domain_expansion/completion.md](showcase/008_domain_expansion/completion.md)
+- [docs/showcase/008_domain_expansion/completion.html](showcase/008_domain_expansion/completion.html)
+
+Task 008 로컬 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/008_domain_expansion/completion.html
+```
+
+Task 008 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/008_domain_expansion/completion.html
+```
+
+Task 008 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion.html
+```

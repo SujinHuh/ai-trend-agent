@@ -6,8 +6,12 @@ export function selectDigestCandidates(input: {
   store: LlmWikiStore;
   reportDate: string;
   limit: number;
+  allowedSourceNames?: Set<string>;
 }): DigestCandidate[] {
-  return [...input.store.listDigestCandidates(input.reportDate, input.limit)].sort((left, right) =>
+  return filterDigestCandidatesBySourceNames(
+    input.store.listDigestCandidates(input.reportDate, input.limit),
+    input.allowedSourceNames
+  ).sort((left, right) =>
     compareDigestCandidates(
       {
         importanceScore: left.assessment.importanceScore,
@@ -22,5 +26,18 @@ export function selectDigestCandidates(input: {
         trendItemId: right.trendItem.id
       }
     )
+  );
+}
+
+export function filterDigestCandidatesBySourceNames(
+  candidates: DigestCandidate[],
+  allowedSourceNames: Set<string> | undefined
+): DigestCandidate[] {
+  if (allowedSourceNames === undefined) {
+    return [...candidates];
+  }
+
+  return candidates.filter((candidate) =>
+    candidate.lineage.some((lineage) => allowedSourceNames.has(lineage.sourceName))
   );
 }

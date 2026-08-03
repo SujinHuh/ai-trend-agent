@@ -160,6 +160,122 @@ describe("CLI", () => {
     expect(ingestionResult.sourceResults[0]?.cacheHit).toBe(true);
   }, 30000);
 
+  it("passes enabled domain filtering into ingestion", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "source-domain-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const cacheRoot = join(tempDir, "cache");
+    const configPath = join(tempDir, "sources.json");
+    const reportDate = "2026-08-01";
+    writeFileSync(
+      configPath,
+      JSON.stringify([
+        cliSource("ai-feed", "AI Feed", "ai"),
+        cliSource("backend-feed", "Backend Feed", "backend")
+      ])
+    );
+    const cacheDir = join(cacheRoot, reportDate);
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "ai-feed.json"), JSON.stringify(cachedFeed("ai-feed", "AI update")));
+    writeFileSync(join(cacheDir, "backend-feed.json"), JSON.stringify(cachedFeed("backend-feed", "Backend update")));
+
+    const defaultRun = await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`
+    ]);
+    const defaultResult = JSON.parse(defaultRun.stdout) as { sourceResults: Array<{ sourceId: string }> };
+    expect(defaultResult.sourceResults.map((source) => source.sourceId)).toEqual(["ai-feed"]);
+
+    const expandedRun = await runCli("ingest:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`,
+      "--domains=ai,backend"
+    ]);
+    const expandedResult = JSON.parse(expandedRun.stdout) as { sourceResults: Array<{ sourceId: string }> };
+    expect(expandedResult.sourceResults.map((source) => source.sourceId)).toEqual(["backend-feed", "ai-feed"]);
+  }, 30000);
+
+  it("uses injectable env ENABLED_DOMAINS when running CLI commands in-process", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "source-domain-env-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const cacheRoot = join(tempDir, "cache");
+    const configPath = join(tempDir, "sources.json");
+    const reportDate = "2026-08-01";
+    const stdout: string[] = [];
+    writeFileSync(
+      configPath,
+      JSON.stringify([
+        cliSource("ai-feed", "AI Feed", "ai"),
+        cliSource("backend-feed", "Backend Feed", "backend")
+      ])
+    );
+    const cacheDir = join(cacheRoot, reportDate);
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "ai-feed.json"), JSON.stringify(cachedFeed("ai-feed", "AI update")));
+    writeFileSync(join(cacheDir, "backend-feed.json"), JSON.stringify(cachedFeed("backend-feed", "Backend update")));
+
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation((value) => {
+      stdout.push(String(value));
+    });
+    try {
+      await runCliCommand(
+        ["ingest:run", `--config=${configPath}`, `--db=${dbPath}`, `--cache-root=${cacheRoot}`, `--date=${reportDate}`],
+        {
+          env: {
+            ENABLED_DOMAINS: "ai,backend"
+          }
+        }
+      );
+
+      const parsed = JSON.parse(stdout[0] ?? "{}") as { sourceResults: Array<{ sourceId: string }> };
+      expect(parsed.sourceResults.map((source) => source.sourceId)).toEqual(["backend-feed", "ai-feed"]);
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  }, 30000);
+
+  it("passes enabled domain filtering into cron dry-run", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "source-domain-cron-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const cacheRoot = join(tempDir, "cache");
+    const configPath = join(tempDir, "sources.json");
+    const reportDate = "2026-08-01";
+    writeFileSync(
+      configPath,
+      JSON.stringify([
+        cliSource("ai-feed", "AI Feed", "ai"),
+        cliSource("backend-feed", "Backend Feed", "backend")
+      ])
+    );
+    const cacheDir = join(cacheRoot, reportDate);
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "ai-feed.json"), JSON.stringify(cachedFeed("ai-feed", "AI update")));
+    writeFileSync(join(cacheDir, "backend-feed.json"), JSON.stringify(cachedFeed("backend-feed", "Backend update")));
+
+    const defaultRun = await runCli("cron:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`,
+      "--dry-run"
+    ]);
+    expect(JSON.parse(defaultRun.stdout)).toMatchObject({ candidateCount: 1 });
+
+    const expandedRun = await runCli("cron:run", [
+      `--config=${configPath}`,
+      `--db=${dbPath}`,
+      `--cache-root=${cacheRoot}`,
+      `--date=${reportDate}`,
+      "--dry-run",
+      "--force",
+      "--domains=ai,backend"
+    ]);
+    expect(JSON.parse(expandedRun.stdout)).toMatchObject({ candidateCount: 2 });
+  }, 30000);
+
   it("generates digest candidates from cached ingestion output", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "digest-candidates-cli-"));
     const dbPath = join(tempDir, "wiki.sqlite");
@@ -912,4 +1028,45 @@ async function prepareSingleCandidateFixture() {
   );
 
   return { dbPath, configPath, cacheRoot, reportDate };
+}
+
+function cliSource(id: string, name: string, domain: string) {
+  return {
+    id,
+    name,
+    type: "atom",
+    url: `https://example.com/${id}.atom`,
+    domain,
+    category: "developer_tool",
+    credibility: "official",
+    enabled: true,
+    priority: domain === "ai" ? 5 : 10,
+    tags: [domain],
+    fetchConfig: {
+      timeoutMs: 5000,
+      maxItemsPerFetch: 10,
+      cacheTtlMinutes: 1000000
+    }
+  };
+}
+
+function cachedFeed(sourceId: string, title: string) {
+  return {
+    sourceId,
+    fetchedAt: new Date().toISOString(),
+    status: 200,
+    headers: {
+      "content-type": "application/atom+xml"
+    },
+    body: [
+      "<feed>",
+      "<entry>",
+      `<title>${title}</title>`,
+      `<link href="https://example.com/${sourceId}/update" />`,
+      "<published>2026-07-31T16:00:00Z</published>",
+      `<summary>${title} evidence.</summary>`,
+      "</entry>",
+      "</feed>"
+    ].join("")
+  };
 }

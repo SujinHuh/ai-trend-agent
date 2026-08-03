@@ -96,8 +96,54 @@ describe("trend ranking", () => {
 
     expect(boosted - base).toBe(6);
   });
+
+  it("applies domain ranking weight without changing the default ai weight", () => {
+    const input = {
+      trendItem: {
+        id: "trend_one",
+        canonicalUrl: "https://example.com/release",
+        canonicalHash: "hash",
+        title: "Official API release",
+        sourceName: "Example Source",
+        publishedAt: "2026-08-01T16:00:00.000Z"
+      },
+      evidence: [
+        {
+          id: "evidence_one",
+          trendItemId: "trend_one",
+          sourceUrl: "https://example.com/release",
+          sourceName: "Example Source",
+          fetchedAt: "2026-08-01T16:00:00.000Z",
+          evidenceExcerpt: "Official API release.",
+          confidenceScore: 0.95
+        }
+      ],
+      reportDate: "2026-08-02",
+      trendCategory: "infra" as const,
+      confirmationStatus: "official_only" as const
+    };
+    const aiScore = calculateImportanceScore({
+      ...input,
+      metadataByName: new Map([
+        ["Example Source", { name: "Example Source", domain: "ai" as const, credibility: "official" as const, priority: 1, tags: [] }]
+      ])
+    });
+    const backendScore = calculateImportanceScore({
+      ...input,
+      metadataByName: new Map([
+        [
+          "Example Source",
+          { name: "Example Source", domain: "backend" as const, credibility: "official" as const, priority: 1, tags: [] }
+        ]
+      ])
+    });
+
+    expect(backendScore - aiScore).toBe(2);
+  });
 });
 
 function officialMetadata() {
-  return new Map([["OpenAI News", { name: "OpenAI News", credibility: "official" as const, priority: 1, tags: [] }]]);
+  return new Map([
+    ["OpenAI News", { name: "OpenAI News", domain: "ai" as const, credibility: "official" as const, priority: 1, tags: [] }]
+  ]);
 }

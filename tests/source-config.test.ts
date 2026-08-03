@@ -22,6 +22,7 @@ describe("source registry config", () => {
       "github-openai-python-releases"
     ]);
     expect(sources.every((source) => source.enabled)).toBe(true);
+    expect(sources.every((source) => source.domain === "ai")).toBe(true);
     expect(sources.every((source) => source.credibility === "official")).toBe(true);
 
     const anthropicNews = sources.find((source) => source.id === "anthropic-news");
@@ -35,7 +36,7 @@ describe("source registry config", () => {
   });
 
   it("can validate disabled backlog sources without returning them for ingestion", () => {
-    const allSources = loadSourceConfigs(undefined, { includeDisabled: true });
+    const allSources = loadSourceConfigs(undefined, { includeDisabled: true, includeDomainDisabled: true });
     const sourceIds = allSources.map((source) => source.id);
 
     expect(sourceIds).toContain("google-deepmind-blog");
@@ -46,9 +47,64 @@ describe("source registry config", () => {
     expect(sourceIds).toContain("deepseek-api-updates");
     expect(sourceIds).toContain("qwen-blog");
     expect(sourceIds).toContain("spring-news");
+    expect(sourceIds).toContain("mdn-blog-feed");
+    expect(sourceIds).toContain("kubernetes-blog-feed");
     expect(loadSourceConfigs().map((source) => source.id)).not.toContain("spring-news");
+    expect(loadSourceConfigs().map((source) => source.id)).not.toContain("mdn-blog-feed");
+    expect(loadSourceConfigs().map((source) => source.id)).not.toContain("kubernetes-blog-feed");
     expect(loadSourceConfigs().map((source) => source.id)).not.toContain("openai-news");
     expect(loadSourceConfigs().map((source) => source.id)).not.toContain("google-blog-feed");
+  });
+
+  it("defaults omitted source domains to ai", () => {
+    const [source] = normalizeSourceConfigs([
+      {
+        id: "default-domain",
+        name: "Default Domain",
+        type: "rss",
+        url: "https://example.com/feed.xml",
+        category: "llm_vendor",
+        credibility: "official",
+        enabled: true,
+        priority: 1,
+        tags: ["example"],
+        fetchConfig: {
+          timeoutMs: 5000,
+          maxItemsPerFetch: 10,
+          cacheTtlMinutes: 60
+        }
+      }
+    ]);
+
+    expect(source?.domain).toBe("ai");
+  });
+
+  it("filters sources by enabled domains before ingestion", () => {
+    const sources = normalizeSourceConfigs([
+      sourceConfig("ai-source", "AI Source", "ai", true),
+      sourceConfig("backend-source", "Backend Source", "backend", true),
+      sourceConfig("frontend-source", "Frontend Source", "frontend", true)
+    ]);
+    const configDir = mkdtempSync(join(tmpdir(), "source-config-domains-"));
+    const configPath = join(configDir, "sources.json");
+    writeFileSync(configPath, JSON.stringify(sources));
+
+    expect(loadSourceConfigs(configPath).map((source) => source.id)).toEqual(["ai-source"]);
+    expect(loadSourceConfigs(configPath, { enabledDomains: ["ai", "backend"] }).map((source) => source.id)).toEqual([
+      "backend-source",
+      "ai-source"
+    ]);
+  });
+
+  it("rejects unknown source domains", () => {
+    expect(() =>
+      normalizeSourceConfigs([
+        {
+          ...sourceConfig("unknown-domain", "Unknown Domain", "ai", true),
+          domain: "mobile"
+        }
+      ])
+    ).toThrow(/source\[0\]\.domain: expected one of "ai", "backend", "frontend", "devops"/u);
   });
 
   it("derives parser dispatch from source type when parserType is omitted", () => {
@@ -164,3 +220,23 @@ describe("source registry config", () => {
     });
   });
 });
+
+function sourceConfig(id: string, name: string, domain: string, enabled: boolean) {
+  return {
+    id,
+    name,
+    type: "rss",
+    url: `https://example.com/${id}.xml`,
+    domain,
+    category: "developer_tool",
+    credibility: "official",
+    enabled,
+    priority: domain === "ai" ? 10 : 20,
+    tags: [domain],
+    fetchConfig: {
+      timeoutMs: 5000,
+      maxItemsPerFetch: 10,
+      cacheTtlMinutes: 60
+    }
+  };
+}

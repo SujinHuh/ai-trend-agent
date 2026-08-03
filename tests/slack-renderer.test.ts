@@ -18,6 +18,17 @@ describe("renderSlackDigest", () => {
     expect(JSON.stringify(payload)).toContain("Urgent");
   });
 
+  it("keeps the previous all-AI layout without a redundant domain section", () => {
+    const payload = renderSlackDigest({
+      reportDate: "2026-08-01",
+      candidates: [candidate()],
+      limit: 5,
+      sourceDomainsByName: new Map([["Example Source", "ai"]])
+    });
+
+    expect(JSON.stringify(payload)).not.toContain("AI Signals");
+  });
+
   it("uses conservative urgent criteria", () => {
     expect(isUrgentCandidate(candidate())).toBe(true);
     expect(
@@ -88,6 +99,48 @@ describe("renderSlackDigest", () => {
     });
 
     expect(JSON.stringify(payload)).toContain("No ranked digest candidates");
+  });
+
+  it("separates candidates into domain sections when source domains are provided", () => {
+    const payload = renderSlackDigest({
+      reportDate: "2026-08-01",
+      candidates: [
+        candidate(),
+        {
+          ...candidate(),
+          assessment: {
+            ...candidate().assessment,
+            id: "assessment_backend",
+            trendItemId: "trend_backend"
+          },
+          trendItem: {
+            ...candidate().trendItem,
+            id: "trend_backend",
+            title: "Backend framework release",
+            sourceName: "Spring News"
+          },
+          lineage: [
+            {
+              assessmentId: "assessment_backend",
+              sourceEvidenceId: "evidence_backend",
+              sourceName: "Spring News",
+              sourceUrl: "https://spring.io/blog/backend",
+              confidenceScore: 0.85
+            }
+          ]
+        }
+      ],
+      limit: 5,
+      sourceDomainsByName: new Map([
+        ["Example Source", "ai"],
+        ["Spring News", "backend"]
+      ])
+    });
+    const rendered = JSON.stringify(payload);
+
+    expect(rendered).toContain("AI Signals");
+    expect(rendered).toContain("Backend Signals");
+    expect(rendered.indexOf("AI Signals")).toBeLessThan(rendered.indexOf("Backend Signals"));
   });
 
   it("keeps Slack blocks and section text under platform limits", () => {

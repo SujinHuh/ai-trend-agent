@@ -53,6 +53,7 @@ describe("createTrendSynthesis", () => {
           "Community Forum",
           {
             name: "Community Forum",
+            domain: "ai",
             credibility: "community",
             priority: 5,
             tags: ["ai"]
@@ -102,6 +103,7 @@ function officialMetadata(): SourceMetadataByName {
       "Anthropic News",
       {
         name: "Anthropic News",
+        domain: "ai",
         credibility: "official",
         priority: 5,
         tags: ["ai"]
