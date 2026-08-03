@@ -11,7 +11,12 @@ import type { DigestIntelligenceProvider } from "./llm/digest-intelligence.js";
 import { resolveProjectPath } from "./security/path-scope.js";
 import type { SourceFetcher } from "./sources/fetch-cache.js";
 import { ingestSources } from "./sources/ingest-sources.js";
-import { DEFAULT_SOURCE_CONFIG_PATH, loadSourceConfigs } from "./sources/source-config.js";
+import {
+  DEFAULT_SOURCE_CONFIG_PATH,
+  loadSourceConfigs,
+  parseEnabledDomains,
+  type SourceDomain
+} from "./sources/source-config.js";
 import { runTrendSynthesis } from "./synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "./synthesis/select-digest-candidates.js";
 import { renderSlackDigest } from "./slack/render-slack-digest.js";
@@ -39,6 +44,7 @@ interface CliOptions {
   send: boolean;
   force: boolean;
   llmDigestIntelligence: boolean;
+  enabledDomains?: SourceDomain[] | undefined;
   cacheRoot?: string;
   date?: string;
   limit: number;
@@ -341,7 +347,7 @@ function getDigest(options: CliOptions): void {
 
 function validateSources(options: CliOptions): void {
   const sourceConfigPath = resolveProjectPath(options.sourceConfigPath, "source config path");
-  const sources = loadSourceConfigs(sourceConfigPath, { includeDisabled: true });
+  const sources = loadSourceConfigs(sourceConfigPath, { includeDisabled: true, includeDomainDisabled: true });
   const enabledSources = sources.filter((source) => source.enabled);
 
   console.log(
@@ -350,7 +356,11 @@ function validateSources(options: CliOptions): void {
         configPath: sourceConfigPath,
         sourceCount: sources.length,
         enabledSourceCount: enabledSources.length,
-        enabledSourceIds: enabledSources.map((source) => source.id)
+        enabledSourceIds: enabledSources.map((source) => source.id),
+        domains: sources.reduce<Record<string, number>>((counts, source) => {
+          counts[source.domain] = (counts[source.domain] ?? 0) + 1;
+          return counts;
+        }, {})
       },
       null,
       2
@@ -363,7 +373,9 @@ async function runIngestion(options: CliOptions): Promise<void> {
     throw new Error("Missing required option: --date=YYYY-MM-DD");
   }
 
-  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"));
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
+    enabledDomains: options.enabledDomains
+  });
   const { db, store } = openStore(options.dbPath);
 
   try {
@@ -397,7 +409,8 @@ function runDigestCandidates(options: CliOptions): void {
   }
 
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true
+    includeDisabled: true,
+    enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
 
@@ -437,7 +450,8 @@ function queryWiki(options: CliOptions): void {
   }
 
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true
+    includeDisabled: true,
+    enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
 
@@ -475,7 +489,8 @@ function writeWikiIndex(options: CliOptions): void {
   const outPath = options.outPath ?? "docs/wiki/index.md";
   const reportDate = options.date ?? new Date().toISOString().slice(0, 10);
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true
+    includeDisabled: true,
+    enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
 
@@ -525,7 +540,8 @@ async function previewSlack(options: CliOptions, dependencies: CliDependencies =
   try {
     store.initialize();
     const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
-      includeDisabled: true
+      includeDisabled: true,
+      enabledDomains: options.enabledDomains
     });
     const built = await buildSlackDigestAsync({
       store,
@@ -568,7 +584,8 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
   try {
     store.initialize();
     const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
-      includeDisabled: true
+      includeDisabled: true,
+      enabledDomains: options.enabledDomains
     });
     const result = await sendSlackDigest({
       store,
@@ -604,7 +621,9 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
 
 async function runCron(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
   const env = dependencies.env ?? process.env;
-  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+    enabledDomains: options.enabledDomains
+  });
   const { db, store } = openStore(options.dbPath, env);
 
   try {
@@ -638,7 +657,9 @@ async function serveCron(options: CliOptions, dependencies: CliDependencies = {}
   const env = dependencies.env ?? process.env;
   const { db, store } = openStore(options.dbPath, env);
   store.initialize();
-  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env));
+  const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+    enabledDomains: options.enabledDomains
+  });
   const server = createCronHttpServer({
     env,
     buildInput: (request) => {
@@ -719,6 +740,7 @@ function parseOptions(args: string[]): CliOptions {
     send: false,
     force: false,
     llmDigestIntelligence: process.env.LLM_DIGEST_ENABLED === "true",
+    enabledDomains: parseEnabledDomains(process.env.ENABLED_DOMAINS),
     port: 3000,
     limit: 5
   };
@@ -748,6 +770,8 @@ function parseOptions(args: string[]): CliOptions {
       options.force = true;
     } else if (arg === "--llm-digest") {
       options.llmDigestIntelligence = true;
+    } else if (arg.startsWith("--domains=")) {
+      options.enabledDomains = parseEnabledDomains(arg.slice("--domains=".length));
     } else if (arg.startsWith("--cache-root=")) {
       options.cacheRoot = arg.slice("--cache-root=".length);
     } else if (arg.startsWith("--limit=")) {
@@ -893,6 +917,7 @@ function printUsageAndExit(command: string | undefined): never {
       "  --force-refresh    Bypass source cache",
       "  --force-send       Allow slack:send to resend an identical successful payload",
       "  --llm-digest       Enable injectable LLM digest enrichment when a provider is configured",
+      "  --domains=a,b      Enable source domains: ai, backend, frontend, devops",
       "  --limit=N          Limit candidate output",
       "  --out=PATH         Output path for wiki:index"
     ].join("\n")

@@ -1,4 +1,5 @@
 import { mkdtemp } from "node:fs/promises";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -9,7 +10,7 @@ import { openSqliteDatabase } from "../src/db/sqlite.js";
 import { createTrendIdentity } from "../src/identity/stable-id.js";
 import { ingestSources } from "../src/sources/ingest-sources.js";
 import type { SourceFetcher } from "../src/sources/fetch-cache.js";
-import type { NormalizedSourceConfig } from "../src/sources/source-config.js";
+import { loadSourceConfigs, type NormalizedSourceConfig } from "../src/sources/source-config.js";
 
 describe("ingestSources", () => {
   it("persists included official source items and reports partial source failures", async () => {
@@ -111,7 +112,66 @@ describe("ingestSources", () => {
 
     db.close();
   });
+
+  it("does not fetch sources from disabled domains", async () => {
+    const configDir = mkdtempSync(join(tmpdir(), "source-ingest-domains-"));
+    const configPath = join(configDir, "sources.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify([
+        rawSource("ai-feed", "AI Feed", "ai"),
+        rawSource("backend-feed", "Backend Feed", "backend")
+      ])
+    );
+    const sources = loadSourceConfigs(configPath);
+    const db = openSqliteDatabase(":memory:");
+    const store = createLlmWikiStore(db);
+    store.initialize();
+    const fetcher = vi.fn<SourceFetcher>().mockResolvedValue({
+      status: 200,
+      headers: {},
+      body: [
+        "<feed>",
+        "<entry><title>AI model release</title><link href=\"https://example.com/ai-model\" /><published>2026-07-31T16:00:00Z</published></entry>",
+        "</feed>"
+      ].join("")
+    });
+
+    try {
+      const result = await ingestSources(sources, store, {
+        reportDate: "2026-08-01",
+        cacheRoot: await mkdtemp(join(tmpdir(), "source-ingest-domain-cache-")),
+        fetcher
+      });
+
+      expect(sources.map((source) => source.id)).toEqual(["ai-feed"]);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(result.sourceResults.map((sourceResult) => sourceResult.sourceId)).toEqual(["ai-feed"]);
+    } finally {
+      db.close();
+    }
+  });
 });
+
+function rawSource(id: string, name: string, domain: "ai" | "backend") {
+  return {
+    id,
+    name,
+    domain,
+    type: "atom",
+    url: `https://example.com/${id}.atom`,
+    category: "llm_vendor",
+    credibility: "official",
+    enabled: true,
+    priority: 1,
+    tags: [domain],
+    fetchConfig: {
+      timeoutMs: 100,
+      maxItemsPerFetch: 10,
+      cacheTtlMinutes: 1
+    }
+  };
+}
 
 function source(id: string, name: string, url: string): NormalizedSourceConfig {
   return {
@@ -120,6 +180,7 @@ function source(id: string, name: string, url: string): NormalizedSourceConfig {
     type: "atom",
     url,
     category: "llm_vendor",
+    domain: "ai",
     credibility: "official",
     enabled: true,
     priority: 1,

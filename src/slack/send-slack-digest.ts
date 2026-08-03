@@ -2,7 +2,7 @@ import type { LlmWikiStore } from "../db/llm-wiki-store.js";
 import type { SlackDeliveryAttempt, SlackWebhookPayload } from "../domain/types.js";
 import type { DigestIntelligenceProvider } from "../llm/digest-intelligence.js";
 import { enrichDigestCandidatesWithLlm } from "../llm/digest-intelligence.js";
-import type { NormalizedSourceConfig } from "../sources/source-config.js";
+import type { SourceDomain, NormalizedSourceConfig } from "../sources/source-config.js";
 import { runTrendSynthesis } from "../synthesis/run-synthesis.js";
 import { selectDigestCandidates } from "../synthesis/select-digest-candidates.js";
 import { renderSlackDigest } from "./render-slack-digest.js";
@@ -58,7 +58,8 @@ export function buildSlackDigest(input: BuildSlackDigestInput): BuiltSlackDigest
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
     candidates,
-    limit: input.limit
+    limit: input.limit,
+    sourceDomainsByName: createSourceDomainsByName(input.sources)
   });
   const payloadHash = createPayloadHash(JSON.stringify(payload));
 
@@ -92,7 +93,8 @@ export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promi
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
     candidates,
-    limit: input.limit
+    limit: input.limit,
+    sourceDomainsByName: createSourceDomainsByName(input.sources)
   });
   const payloadHash = createPayloadHash(JSON.stringify(payload));
 
@@ -102,6 +104,10 @@ export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promi
     payload,
     payloadHash
   };
+}
+
+function createSourceDomainsByName(sources: NormalizedSourceConfig[]): Map<string, SourceDomain> {
+  return new Map(sources.map((source) => [source.name, source.domain]));
 }
 
 export async function sendSlackDigest(input: SendSlackDigestInput): Promise<SendSlackDigestResult> {

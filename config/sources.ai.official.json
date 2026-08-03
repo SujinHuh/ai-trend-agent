@@ -280,6 +280,7 @@
     "name": "Spring News and Events",
     "type": "html",
     "url": "https://spring.io/blog/category/news/",
+    "domain": "backend",
     "category": "backend",
     "credibility": "official",
     "parserType": "html_list_parser",
@@ -299,6 +300,42 @@
       "dateSelector": "self",
       "excerptSelector": "self",
       "dateFormatHint": "Month DD, YYYY"
+    }
+  },
+  {
+    "id": "mdn-blog-feed",
+    "name": "MDN Blog Feed",
+    "type": "rss",
+    "url": "https://developer.mozilla.org/en-US/blog/rss.xml",
+    "domain": "frontend",
+    "category": "developer_tool",
+    "credibility": "official",
+    "parserType": "rss_parser",
+    "enabled": false,
+    "priority": 58,
+    "tags": ["mdn", "web-platform", "javascript", "frontend"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
+    }
+  },
+  {
+    "id": "kubernetes-blog-feed",
+    "name": "Kubernetes Blog Feed",
+    "type": "rss",
+    "url": "https://kubernetes.io/feed.xml",
+    "domain": "devops",
+    "category": "cloud",
+    "credibility": "official",
+    "parserType": "rss_parser",
+    "enabled": false,
+    "priority": 58,
+    "tags": ["kubernetes", "containers", "devops", "platform"],
+    "fetchConfig": {
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "cacheTtlMinutes": 60
     }
   }
 ]

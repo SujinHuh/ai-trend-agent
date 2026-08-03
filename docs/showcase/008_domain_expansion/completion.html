@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 008 Domain Expansion Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 008 검증 완료</span>
+        <h1>도메인 확장</h1>
+        <p>
+          AI Trend Agent v2의 source registry와 digest pipeline을 Backend, Frontend,
+          DevOps까지 확장할 수 있게 한 단계입니다. 기본 운영은 계속 <code>ai</code>
+          도메인만 활성화하고, 추가 도메인은 명시적으로 켤 때만 수집과 Slack digest에 들어갑니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>10 / 13</strong>
+          <p>구현과 로컬 validation까지 완료했고, 공개 확인과 PR handoff를 진행 중입니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>152 passed</strong>
+          <p>22개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>기본 도메인</span>
+          <strong>AI</strong>
+          <p><code>domain</code> 생략과 기본 활성 도메인은 모두 <code>ai</code>입니다.</p>
+        </div>
+        <div class="card metric">
+          <span>확장 도메인</span>
+          <strong>3</strong>
+          <p>Backend, Frontend, DevOps 후보 source를 등록했습니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li><code>SourceDomain</code> 타입과 source config <code>domain</code> 필드</li>
+          <li><code>enabledDomains</code> 기반 source loading filter</li>
+          <li><code>ENABLED_DOMAINS</code> env와 CLI <code>--domains</code> 옵션</li>
+          <li>CLI ingest, digest candidates, wiki, Slack, cron source loading handoff</li>
+          <li>Backend/Frontend/DevOps 후보 source registry</li>
+          <li>source metadata domain propagation과 non-AI domain ranking weight</li>
+          <li>Slack digest domain section rendering</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run sources:validate
+npm run ingest:run -- --date=2026-08-03
+npm run ingest:run -- --date=2026-08-03 --domains=ai,backend
+
+ENABLED_DOMAINS=ai,backend npm run cron:run -- --date=2026-08-03 --dry-run</code></pre>
+        <p>
+          기본 실행은 AI source만 사용합니다. Backend, Frontend, DevOps source는
+          <code>--domains</code> 또는 <code>ENABLED_DOMAINS</code>로 활성화해야 합니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>검증</h2>
+          <pre><code>npm run typecheck      passed
+npm run build          passed
+npm test -- --run      passed
+
+22 test files passed
+152 tests passed
+
+focused 008 tests:
+source config, ingest filtering, ranking weight,
+Slack sections, CLI/cron handoff passed</code></pre>
+        </div>
+        <div class="card">
+          <h2>검수 반영</h2>
+          <ul>
+            <li>기본 AI digest 회귀 방지를 위해 기본 활성 도메인을 <code>ai</code>로 고정</li>
+            <li>disabled domain source가 fetch되지 않도록 load 단계에서 제외</li>
+            <li>AI domain ranking weight를 0으로 유지해 기존 score 기준 보존</li>
+            <li>Slack block limit 테스트를 유지하며 domain section 테스트 추가</li>
+            <li>PR 전 템플릿 문서 재확인 완료</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>제외한 것</h2>
+        <ul>
+          <li>실제 외부 source live fetch 검증</li>
+          <li>JS-rendered page 수집</li>
+          <li>Slack personalization</li>
+          <li>real LLM provider 변경</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>다음 작업</h2>
+        <p>
+          다음 v2 구현 후보는 <strong>Task 009 개인화</strong>입니다.
+          Slack/user preference tuning을 도메인별 digest 위에 얹을 수 있습니다.
+        </p>
+      </section>
+
+      <section class="card links">
+        <h2>확인 링크</h2>
+        <ul>
+          <li><a href="../../task/008_domain_expansion/phase_status.md">phase_status.md</a></li>
+          <li><a href="../../task/008_domain_expansion/validation_report.md">validation_report.md</a></li>
+          <li><a href="./completion.md">completion.md</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

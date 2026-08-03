@@ -284,6 +284,7 @@ function sourceConfig(): NormalizedSourceConfig {
     name: "Fixture Feed",
     type: "atom",
     url: "https://example.com/feed.atom",
+    domain: "ai",
     category: "llm_vendor",
     credibility: "official",
     enabled: true,

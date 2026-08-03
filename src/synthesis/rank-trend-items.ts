@@ -1,5 +1,10 @@
 import type { ConfirmationStatus, SourceEvidence, TrendCategory, TrendItem } from "../domain/types.js";
-import { getMaxSourcePriority, hasOfficialLineage, type SourceMetadataByName } from "./source-lineage.js";
+import {
+  getMaxDomainRankingWeight,
+  getMaxSourcePriority,
+  hasOfficialLineage,
+  type SourceMetadataByName
+} from "./source-lineage.js";
 
 const CATEGORY_SCORE: Record<TrendCategory, number> = {
   model: 15,
@@ -31,6 +36,7 @@ export function calculateImportanceScore(input: {
   score += getDateScore(input.trendItem.publishedAt, input.reportDate);
   score += CATEGORY_SCORE[input.trendCategory];
   score += Math.min(getMaxSourcePriority(input.evidence, input.metadataByName) * 2, 10);
+  score += getMaxDomainRankingWeight(input.evidence, input.metadataByName);
   score += Math.min((input.socialSignalCount ?? 0) * 3, 6);
 
   if (input.confirmationStatus === "needs_confirmation") {

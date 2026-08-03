@@ -1,4 +1,5 @@
 import type { DigestCandidate, SlackWebhookPayload } from "../domain/types.js";
+import type { SourceDomain } from "../sources/source-config.js";
 
 const MAX_SLACK_BLOCKS = 50;
 const MAX_HEADER_TEXT_LENGTH = 150;
@@ -10,6 +11,7 @@ export interface RenderSlackDigestInput {
   reportDate: string;
   candidates: DigestCandidate[];
   limit: number;
+  sourceDomainsByName?: Map<string, SourceDomain>;
 }
 
 export function renderSlackDigest(input: RenderSlackDigestInput): SlackWebhookPayload {
@@ -47,9 +49,22 @@ export function renderSlackDigest(input: RenderSlackDigestInput): SlackWebhookPa
       }
     });
   } else {
-    candidates.forEach((candidate, index) => {
-      pushSectionBlock(blocks, renderCandidate(candidate, index + 1));
-    });
+    let position = 1;
+    for (const section of groupCandidatesByDomain(candidates, input.sourceDomainsByName)) {
+      if (blocks.length < MAX_SLACK_BLOCKS) {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: truncateText(`*${formatDomainLabel(section.domain)}*`, MAX_SECTION_TEXT_LENGTH)
+          }
+        });
+      }
+      for (const candidate of section.candidates) {
+        pushSectionBlock(blocks, renderCandidate(candidate, position));
+        position += 1;
+      }
+    }
   }
 
   if (blocks.length < MAX_SLACK_BLOCKS) {
@@ -71,6 +86,36 @@ export function renderSlackDigest(input: RenderSlackDigestInput): SlackWebhookPa
     text: `AI Trend Daily Digest - ${input.reportDate}`,
     blocks
   };
+}
+
+function groupCandidatesByDomain(
+  candidates: DigestCandidate[],
+  sourceDomainsByName: Map<string, SourceDomain> | undefined
+): { domain: SourceDomain; candidates: DigestCandidate[] }[] {
+  const orderedDomains: SourceDomain[] = ["ai", "backend", "frontend", "devops"];
+  const grouped = new Map<SourceDomain, DigestCandidate[]>(orderedDomains.map((domain) => [domain, []]));
+
+  for (const candidate of candidates) {
+    const sourceName = candidate.lineage[0]?.sourceName ?? candidate.trendItem.sourceName;
+    const domain = sourceDomainsByName?.get(sourceName) ?? "ai";
+    grouped.get(domain)?.push(candidate);
+  }
+
+  return orderedDomains.flatMap((domain) => {
+    const sectionCandidates = grouped.get(domain) ?? [];
+    return sectionCandidates.length === 0 ? [] : [{ domain, candidates: sectionCandidates }];
+  });
+}
+
+function formatDomainLabel(domain: SourceDomain): string {
+  const labels: Record<SourceDomain, string> = {
+    ai: "AI",
+    backend: "Backend",
+    frontend: "Frontend",
+    devops: "DevOps"
+  };
+
+  return `${labels[domain]} Signals`;
 }
 
 export function isUrgentCandidate(candidate: DigestCandidate): boolean {

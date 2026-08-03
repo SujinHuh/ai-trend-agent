@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export type SourceType = "rss" | "atom" | "html" | "github_releases";
+export type SourceDomain = "ai" | "backend" | "frontend" | "devops";
 export type SourceCategory = "llm_vendor" | "cloud" | "backend" | "developer_tool" | "open_source";
 export type SourceCredibility = "official" | "official_aggregated" | "trusted_individual" | "community";
 export type ParserType = "rss_parser" | "atom_parser" | "html_list_parser" | "github_releases_atom";
@@ -47,6 +48,7 @@ export interface SourceConfig {
   url: string;
   homepageUrl?: string;
   vendor?: string;
+  domain?: SourceDomain;
   official?: boolean;
   category: SourceCategory;
   credibility: SourceCredibility;
@@ -63,7 +65,11 @@ export interface SourceConfig {
 }
 
 export interface NormalizedSourceConfig
-  extends Omit<SourceConfig, "official" | "parserType" | "timezone" | "rateLimit" | "retry" | "canonicalizationRules"> {
+  extends Omit<
+    SourceConfig,
+    "domain" | "official" | "parserType" | "timezone" | "rateLimit" | "retry" | "canonicalizationRules"
+  > {
+  domain: SourceDomain;
   official: boolean;
   parserType: ParserType;
   timezone: string;
@@ -74,11 +80,15 @@ export interface NormalizedSourceConfig
 
 export interface LoadSourceConfigOptions {
   includeDisabled?: boolean;
+  enabledDomains?: SourceDomain[] | undefined;
+  includeDomainDisabled?: boolean;
 }
 
 export const DEFAULT_SOURCE_CONFIG_PATH = "config/sources.ai.official.json";
 
 export const SOURCE_CONFIG_DEFAULTS = {
+  domain: "ai",
+  enabledDomains: ["ai"],
   official: true,
   timezone: "UTC",
   rateLimit: {
@@ -96,6 +106,15 @@ export const SOURCE_CONFIG_DEFAULTS = {
   }
 } as const;
 
+export const SOURCE_DOMAINS = ["ai", "backend", "frontend", "devops"] as const;
+
+export const DOMAIN_RANKING_WEIGHTS: Record<SourceDomain, number> = {
+  ai: 0,
+  backend: 2,
+  frontend: 2,
+  devops: 2
+};
+
 export const PARSER_TYPE_BY_SOURCE_TYPE: Record<SourceType, ParserType> = {
   rss: "rss_parser",
   atom: "atom_parser",
@@ -104,6 +123,7 @@ export const PARSER_TYPE_BY_SOURCE_TYPE: Record<SourceType, ParserType> = {
 };
 
 const SOURCE_TYPES = new Set<SourceType>(["rss", "atom", "html", "github_releases"]);
+const SOURCE_DOMAIN_SET = new Set<SourceDomain>(SOURCE_DOMAINS);
 const SOURCE_CATEGORIES = new Set<SourceCategory>(["llm_vendor", "cloud", "backend", "developer_tool", "open_source"]);
 const SOURCE_CREDIBILITIES = new Set<SourceCredibility>([
   "official",
@@ -120,7 +140,10 @@ export function loadSourceConfigs(
   const resolvedPath = resolve(configPath);
   const rawConfig = parseSourceConfigFile(resolvedPath);
   const normalized = normalizeSourceConfigs(rawConfig, resolvedPath);
-  const filtered = options.includeDisabled === true ? normalized : normalized.filter((source) => source.enabled);
+  const enabledDomains = normalizeEnabledDomains(options.enabledDomains);
+  const domainFiltered =
+    options.includeDomainDisabled === true ? normalized : normalized.filter((source) => enabledDomains.has(source.domain));
+  const filtered = options.includeDisabled === true ? domainFiltered : domainFiltered.filter((source) => source.enabled);
 
   return [...filtered].sort((left, right) => {
     const priorityComparison = right.priority - left.priority;
@@ -154,6 +177,37 @@ export function resolveParserType(type: SourceType, parserType?: ParserType): Pa
   }
 
   return parserType ?? expectedParserType;
+}
+
+export function normalizeEnabledDomains(domains: SourceDomain[] | undefined): Set<SourceDomain> {
+  const values = domains ?? [...SOURCE_CONFIG_DEFAULTS.enabledDomains];
+  if (values.length === 0) {
+    throw new Error("enabledDomains: expected at least one domain");
+  }
+
+  const normalized = new Set<SourceDomain>();
+  for (const domain of values) {
+    if (!SOURCE_DOMAIN_SET.has(domain)) {
+      throw new Error(`enabledDomains: expected one of ${formatAllowedValues(SOURCE_DOMAIN_SET)}`);
+    }
+    normalized.add(domain);
+  }
+
+  return normalized;
+}
+
+export function parseEnabledDomains(value: string | undefined): SourceDomain[] | undefined {
+  if (value === undefined || value.trim().length === 0) {
+    return undefined;
+  }
+
+  return value.split(",").map((part) => {
+    const domain = part.trim();
+    if (!SOURCE_DOMAIN_SET.has(domain as SourceDomain)) {
+      throw new Error(`enabledDomains: expected one of ${formatAllowedValues(SOURCE_DOMAIN_SET)}`);
+    }
+    return domain as SourceDomain;
+  });
 }
 
 export function getParserDispatch(source: Pick<SourceConfig, "type" | "parserType">): ParserType {
@@ -199,6 +253,11 @@ function parseSource(rawSource: unknown, path: string): SourceConfig {
   const vendor = readOptionalString(rawSource, "vendor", path);
   if (vendor !== undefined) {
     source.vendor = vendor;
+  }
+
+  const domain = readOptionalEnum(rawSource, "domain", path, SOURCE_DOMAIN_SET);
+  if (domain !== undefined) {
+    source.domain = domain;
   }
 
   const official = readOptionalBoolean(rawSource, "official", path);
@@ -250,6 +309,7 @@ function applySourceDefaults(source: SourceConfig, path: string): NormalizedSour
 
   return {
     ...source,
+    domain: source.domain ?? SOURCE_CONFIG_DEFAULTS.domain,
     official: source.official ?? SOURCE_CONFIG_DEFAULTS.official,
     parserType,
     timezone: source.timezone ?? SOURCE_CONFIG_DEFAULTS.timezone,

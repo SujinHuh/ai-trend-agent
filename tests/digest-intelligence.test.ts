@@ -377,6 +377,7 @@ function exampleSource(): NormalizedSourceConfig {
     name: "Example Source",
     type: "rss",
     url: "https://example.com/feed.xml",
+    domain: "ai",
     category: "llm_vendor",
     credibility: "official",
     enabled: true,

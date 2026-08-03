@@ -12,6 +12,7 @@ LLM Wiki 운영 원칙은 [LLM Wiki Karpathy Reference](llm-wiki-karpathy-refere
 
 ```ts
 type SourceType = "rss" | "atom" | "html" | "github_releases";
+type SourceDomain = "ai" | "backend" | "frontend" | "devops";
 type SourceCategory = "llm_vendor" | "cloud" | "backend" | "developer_tool" | "open_source";
 type SourceCredibility = "official" | "official_aggregated" | "trusted_individual" | "community";
 type ParserType = "rss_parser" | "atom_parser" | "html_list_parser" | "github_releases_atom";
@@ -24,6 +25,7 @@ interface SourceConfig {
   homepageUrl?: string;
   vendor?: string;
   official?: boolean;
+  domain?: SourceDomain;
   category: SourceCategory;
   credibility: SourceCredibility;
   parserType?: ParserType;
@@ -69,6 +71,8 @@ interface SourceConfig {
 
 ```json
 {
+  "domain": "ai",
+  "enabledDomains": ["ai"],
   "official": true,
   "timezone": "UTC",
   "rateLimit": {
@@ -89,6 +93,17 @@ interface SourceConfig {
 
 `htmlParserConfig`는 `type="html"`인 source에만 필요하다.
 
+`domain`은 source가 어느 digest 영역에 속하는지 나타낸다. 생략하면 `ai`로 처리한다. 실행 시 기본 활성 도메인은 `ai` 하나이며, `ENABLED_DOMAINS=ai,backend` 또는 CLI `--domains=ai,backend`로 확장한다. 활성 도메인에 없는 source는 `enabled: true`여도 ingest, ranking, Slack digest 입력에서 제외한다.
+
+초기 허용 도메인:
+
+- `ai`
+- `backend`
+- `frontend`
+- `devops`
+
+도메인 확장 source는 config에 먼저 후보로 등록하되 기본 운영은 `ai`만 활성화한다. Backend, Frontend, DevOps를 사용하려면 운영자가 명시적으로 활성 도메인 목록에 추가해야 한다.
+
 HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 002에서는 다음 원칙을 따른다.
 
 - selector 기반 파싱이 실패하면 해당 source를 `SourceResult.success=false`로 처리한다.
@@ -108,6 +123,14 @@ HTML source별 selector는 실제 구현 중 조정될 수 있으므로, Task 00
 - `github-openai-python-releases`
 
 OpenAI News는 서버 환경에서 Cloudflare 403이 재현되어 disabled 상태로 둔다. Google Blog Feed는 `https://blog.google/feed/`가 HTML을 반환해 RSS parser가 유효한 feed로 처리할 수 없으므로 disabled 상태로 둔다. 두 source는 이후 별도 feed URL, 허용 가능한 공식 endpoint, 또는 안정적인 fetch 정책이 확인되면 다시 enabled로 전환한다.
+
+Task 008 도메인 확장 후보:
+
+- Backend: `spring-news`
+- Frontend: `mdn-blog-feed`
+- DevOps: `kubernetes-blog-feed`
+
+이 후보들은 기본 `enabledDomains=["ai"]`에서는 수집되지 않는다.
 
 ```json
 [
