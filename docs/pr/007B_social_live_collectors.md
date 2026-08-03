@@ -20,6 +20,8 @@ PR 제목: `Task 007B: 소셜 Live Collector`
 - live social signal도 기존 official `SourceEvidence`와 explicit URL matching을 거치도록 했습니다.
 - malformed HN JSON이 전체 poll run을 중단하지 않고 source-level error로 기록되도록 했습니다.
 - repeated HN poll이 TTL 안에서 cache hit를 사용하는지 테스트를 추가했습니다.
+- completion HTML을 기존 Task 003/004 report 형식에 맞춰 status badge, metrics grid, validation, 검수 반영, 제외한 것, 확인 링크 구조로 다시 작성했습니다.
+- 하네스 문서에 하위 번호별 구현-검수-보완-재검증 루프를 명시했습니다.
 - X/Threads live collector는 계속 Deferred로 유지했습니다.
 
 ## 변경 이유
@@ -66,6 +68,7 @@ curl -I http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/
 - code/security review 완료: malformed HN JSON error boundary 지적 반영.
 - docs/GCP review 완료: 사용자 확인 링크를 GCP public URL 기준으로 정리.
 - final post-fix review 완료: PR blocking finding 없음.
+- harness wording re-check 완료: 구현 step별 서브 에이전트 검수 필수 문구에 blocking finding 없음.
 - 남은 note: `pollingIntervalMinutes`는 007B에서 scheduling metadata이며 cron interval enforcement는 후속 통합 범위.
 
 ## 연관 이슈

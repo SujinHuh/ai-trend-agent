@@ -6,6 +6,8 @@ Task 007B adds opt-in live polling for fast community signals.
 
 HN and Reddit can now be polled through public endpoints with cache, timeout, and item limit controls. The default registry still keeps every social source disabled, so live polling only runs after a source is explicitly enabled in config.
 
+The browser report HTML now follows the prior v2 completion format used by Task 003/004: status badge, metrics grid, card sections, validation block, review findings, exclusions, next task, and confirmation links.
+
 ## Built
 
 - `livePolling` source config contract

@@ -106,6 +106,37 @@ Checklist:
    - task `requirements.md`
    - task `implementation-sequence.md`
 
+### Numbered Step Loop
+
+When a task has numbered steps in `implementation-sequence.md` or `phase_status.md`, run the implementation loop per numbered step.
+
+For each step:
+
+```text
+1. Mark only that step In Progress.
+2. Implement the step.
+3. Run the smallest useful local validation for that step.
+4. Run sub-agent review for every implementation step.
+5. Apply review findings or explicitly document a deferral.
+6. Re-run validation after fixes.
+7. Mark that step Done only after validation and review evidence are recorded.
+```
+
+Do not mark several numbered steps `Done` as a batch unless the validation report says which steps were reviewed together and why batching was appropriate.
+
+An implementation step is any numbered step that changes code, tests, schema, config, parser behavior, ranking, LLM behavior, Slack, cron, deployment, security, credentials, rate limits, legal collection boundaries, public output, or future-scope docs.
+
+Only non-implementation status steps may skip sub-agent review. Examples: typo fixes, PR URL recording, a phase status line update, or a link-only docs correction. If unsure, treat the step as an implementation step and run review.
+
+For sub-agent-reviewed steps, record:
+
+- step number and title
+- sub-agent review scope
+- findings by severity
+- fixes applied
+- commands re-run after fixes
+- remaining accepted risks
+
 ## 6. Verification Check
 
 Run after implementation and before PR.
@@ -241,7 +272,7 @@ Working tree: clean / dirty
 
 ## 10. Sub-Agent Review Policy
 
-Use sub-agent review when the task affects:
+At the task level, use sub-agent review when the task affects:
 
 - storage schema
 - source ingestion or parsing
@@ -252,6 +283,8 @@ Use sub-agent review when the task affects:
 - broad docs that define future task scope
 
 For small docs-only status updates, local checklist review is enough.
+
+This section does not weaken the numbered step loop. If a numbered step is an implementation step, run sub-agent review before marking it `Done`.
 
 Sub-agent review output should be summarized in:
 

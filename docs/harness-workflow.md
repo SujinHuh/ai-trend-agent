@@ -133,6 +133,31 @@ docs/task/005_hermes_cron/
 
 v2 task에서는 위 루프를 수동 기억에 의존하지 않고 [v2 Task Harness](v2-task-harness.md)의 gate, verify, showcase, PR, merge check로 확인한다.
 
+## 5.1 하위 번호별 구현-검수 루프
+
+task가 `implementation-sequence.md` 또는 `phase_status.md`에 1번부터 끝번호까지 하위 단계를 가지고 있으면, 각 하위 단계는 아래 루프를 따른다.
+
+```text
+Step N Pending
+-> Step N 구현
+-> Step N 로컬 검증
+-> Step N 서브 에이전트 검수
+-> 검수 지적 반영
+-> Step N 재검증
+-> Step N Done 기록
+-> Step N+1 진행
+```
+
+원칙:
+
+- 구현 step은 모두 서브 에이전트 검수 필수다. 여기서 구현 step은 코드, 테스트, schema, config, parser, ranking, LLM, Slack, cron, deployment, security, credentials, rate limit, legal boundary, public output, future scope docs를 바꾸는 step이다.
+- 단순 오타, 링크 수정, PR URL 기록, phase status 한 줄 갱신처럼 구현 산출물을 바꾸지 않는 상태 기록 step만 로컬 검증으로 처리할 수 있다.
+- Step N 검수가 끝나기 전에는 다음 step을 `Done`으로 넘기지 않는다.
+- 병렬 구현은 가능하지만, 각 step의 완료 기록은 해당 step의 검수 결과와 보완 내역을 포함해야 한다.
+- 여러 step을 한 번에 검수해야 할 때는 validation report에 어떤 step들이 묶였는지와 왜 묶었는지를 기록한다.
+- 서브 에이전트 지적이 있으면 수정 내용과 재검증 명령을 `validation_report.md`와 `docs/logs/YYYY-MM-DD.md`에 남긴다.
+- 검수 증거가 없는 step은 완료된 것으로 주장하지 않는다.
+
 ## 6. 오류 처리 루프
 
 하네스 작업 중 오류가 발생하면 다음 정보를 작업 문서에 남긴다.

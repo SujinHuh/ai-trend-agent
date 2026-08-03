@@ -5,133 +5,263 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Task 007B Social Live Collectors Completion</title>
     <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --warn: #9a5b00;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
+        background: var(--bg);
+        color: var(--text);
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: #17202a;
-        background: #f6f8fb;
+        line-height: 1.55;
       }
+
       main {
-        max-width: 1040px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 48px 20px;
+        padding: 40px 24px 56px;
       }
-      .hero {
-        padding: 28px 0 24px;
-        border-bottom: 1px solid #d9e1ec;
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
       }
+
       h1 {
         margin: 0;
-        font-size: 42px;
-        line-height: 1.1;
+        font-size: 36px;
+        line-height: 1.15;
         letter-spacing: 0;
       }
+
       h2 {
         margin: 0 0 14px;
         font-size: 22px;
         letter-spacing: 0;
       }
+
       p {
-        line-height: 1.65;
+        margin: 0;
+        color: var(--muted);
       }
+
+      section {
+        margin-top: 28px;
+      }
+
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 16px;
-        margin-top: 22px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
       }
+
       .card {
-        background: #ffffff;
-        border: 1px solid #d9e1ec;
+        background: var(--panel);
+        border: 1px solid var(--line);
         border-radius: 8px;
         padding: 18px;
       }
-      code,
-      pre {
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
       }
+
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
       pre {
         overflow: auto;
-        background: #101820;
-        color: #eef6ff;
         border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
         padding: 16px;
+        font-size: 14px;
       }
-      li {
-        margin: 8px 0;
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
       }
     </style>
   </head>
   <body>
     <main>
-      <section class="hero">
-        <h1>Task 007B Social Live Collectors</h1>
+      <header>
+        <span class="status">Task 007B Verified</span>
+        <h1>Social Live Collectors</h1>
         <p>
-          HN/Reddit public endpoint를 opt-in live polling으로 수집하되,
-          social-only 신호는 계속 <code>needs_confirmation</code>으로 유지하는 007 후속 확장을 구현했습니다.
+          AI Trend Agent v2의 007 후속 확장입니다. HN/Reddit public endpoint를
+          opt-in live polling으로 수집하되, social-only 신호는 계속
+          <code>needs_confirmation</code>으로 유지합니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>13 / 13</strong>
+          <p>구현, 검수 수정, validation, completion report, PR handoff까지 완료했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>133 passed</strong>
+          <p>21개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>Live sources</span>
+          <strong>2</strong>
+          <p>HN Firebase API와 Reddit RSS를 credentials 없이 dry-run 검증했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>CLI</span>
+          <strong>1</strong>
+          <p><code>social:poll</code> 명령을 추가했습니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>source-level <code>livePolling</code> config contract</li>
+          <li>Hacker News Firebase API live polling runner</li>
+          <li>Reddit subreddit RSS live polling runner</li>
+          <li>shared timeout, cache TTL, retry, backoff, max item controls</li>
+          <li><code>social:poll</code> CLI와 dry-run mode</li>
+          <li>official SourceEvidence URL matching handoff</li>
+          <li>malformed HN JSON source-level error handling</li>
+          <li>repeated HN polling cache-hit coverage</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run social:validate
+npm run social:poll -- --date=2026-08-03 --dry-run
+
+# real public endpoint dry-run 검증은 enabled test config로 수행
+# HN: fetchedCount 1, normalizedCount 1, savedCount 0
+# Reddit: fetchedCount 1, normalizedCount 1, savedCount 0</code></pre>
+        <p>
+          기본 config는 모든 social source가 disabled라서 <code>social:poll --dry-run</code>은
+          0개 source를 polling하고 0개 item을 저장합니다.
         </p>
       </section>
 
       <section class="grid">
         <div class="card">
-          <h2>Built</h2>
-          <ul>
-            <li>source-level <code>livePolling</code> config contract</li>
-            <li>Hacker News Firebase API live polling</li>
-            <li>Reddit subreddit RSS live polling</li>
-            <li>shared timeout, cache TTL, retry, backoff controls</li>
-            <li><code>social:poll</code> CLI and dry-run mode</li>
-            <li>official SourceEvidence URL matching handoff</li>
-            <li>source-level malformed HN JSON error handling</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h2>Safety</h2>
-          <ul>
-            <li>default social sources remain disabled</li>
-            <li>disabled sources do not fetch</li>
-            <li>dry-run normalizes without persistence</li>
-            <li>social-only signals stay <code>needs_confirmation</code></li>
-            <li>X/Threads live collectors remain deferred</li>
-            <li><code>pollingIntervalMinutes</code> is scheduling metadata for later cron integration</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="grid">
-        <div class="card">
           <h2>Validation</h2>
-          <pre><code>npm run typecheck passed
-npm run social:validate passed: 5 sources, 0 enabled
-npm run social:poll -- --date=2026-08-03 --dry-run passed: 0 polled, 0 saved
-real public HN/Reddit dry-run passed: 2 polled, 0 saved
-focused tests passed: 4 files, 27 tests
+          <pre><code>git diff --check       passed
+npm run typecheck      passed
+npm run build          passed
+npm test               passed
+
+21 test files passed
+133 tests passed
+
+focused pre-review tests passed: 4 files, 27 tests
 post-review focused tests passed: 3 files, 23 tests
-git diff --check passed
-npm run build passed
-full test suite passed: 21 files, 133 tests
-GCP public completion HTML passed: HTTP 200</code></pre>
+GCP public completion HTML: HTTP 200</code></pre>
         </div>
         <div class="card">
-          <h2>Sub-Agent Review</h2>
+          <h2>검수 반영</h2>
           <ul>
-            <li>code/security review completed</li>
-            <li>docs/GCP review completed</li>
-            <li>malformed HN JSON issue fixed and tested</li>
-            <li>GCP public URL is the user-facing confirmation link</li>
+            <li>서브 에이전트 code/security review 완료</li>
+            <li>서브 에이전트 docs/GCP review 완료</li>
+            <li>malformed HN JSON이 전체 poll run을 중단하지 않도록 수정</li>
+            <li>HN cache-hit regression test 추가</li>
+            <li>사용자 확인 링크를 GCP public URL 기준으로 정리</li>
+            <li>최종 post-fix review에서 PR blocking finding 없음 확인</li>
           </ul>
         </div>
       </section>
 
       <section class="card">
-        <h2>Public URL</h2>
-        <pre><code>http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html</code></pre>
+        <h2>제외한 것</h2>
+        <ul>
+          <li>X live collector</li>
+          <li>Threads live collector</li>
+          <li>cron interval enforcement</li>
+          <li>credential이 필요한 social API integration</li>
+          <li>social-only signal의 confirmed 승격</li>
+        </ul>
       </section>
 
       <section class="card">
-        <h2>Next</h2>
-        <p>After Task 007B, choose between <code>007C_llm_digest_intelligence</code> and <code>008_domain_expansion</code>.</p>
+        <h2>다음 작업</h2>
+        <p>
+          다음 v2 구현 후보는 <strong>Task 007C LLM Digest Intelligence</strong> 또는
+          <strong>Task 008 Domain Expansion</strong>입니다. 007C는 요약과 판단 품질을 올리고,
+          008은 Backend, Frontend, DevOps 도메인 확장을 진행합니다.
+        </p>
+      </section>
+
+      <section class="card links">
+        <h2>확인 링크</h2>
+        <ul>
+          <li><a href="http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html">GCP Public Completion HTML</a></li>
+          <li><a href="../../task/007B_social_live_collectors/validation_report.md">Task 007B Validation Report</a></li>
+          <li><a href="../../task/007B_social_live_collectors/phase_status.md">Task 007B Phase Status</a></li>
+          <li><a href="../../implementation-sequence-v2.md">Implementation Sequence v2</a></li>
+        </ul>
       </section>
     </main>
   </body>
