@@ -69,6 +69,7 @@ function parseSocialSignalSource(rawSource: Record<string, unknown>, path: strin
     policyReviewedAt: readOptionalString(rawSource, "policyReviewedAt", path) ?? null,
     policyNotes: readOptionalString(rawSource, "policyNotes", path) ?? null,
     rateLimit: readRateLimit(rawSource.rateLimit, `${path}.rateLimit`),
+    livePolling: readLivePolling(rawSource.livePolling, `${path}.livePolling`),
     security: readSecurity(rawSource.security, `${path}.security`)
   };
 }
@@ -93,6 +94,21 @@ function readRateLimit(value: unknown, path: string): SocialSignalSource["rateLi
   return {
     maxRequestsPerWindow: readPositiveInteger(value, "maxRequestsPerWindow", path),
     windowSeconds: readPositiveInteger(value, "windowSeconds", path)
+  };
+}
+
+function readLivePolling(value: unknown, path: string): SocialSignalSource["livePolling"] {
+  if (!isRecord(value)) {
+    throw new Error(`${path}: expected object`);
+  }
+
+  return {
+    pollingIntervalMinutes: readPositiveInteger(value, "pollingIntervalMinutes", path),
+    cacheTtlMinutes: readPositiveInteger(value, "cacheTtlMinutes", path),
+    timeoutMs: readPositiveInteger(value, "timeoutMs", path),
+    maxItemsPerFetch: readPositiveInteger(value, "maxItemsPerFetch", path),
+    retryCount: readNonNegativeInteger(value, "retryCount", path),
+    backoffMs: readNonNegativeInteger(value, "backoffMs", path)
   };
 }
 
@@ -146,6 +162,14 @@ function readPositiveInteger(record: Record<string, unknown>, key: string, path:
   const value = record[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
     throw new Error(`${path}.${key}: expected positive integer`);
+  }
+  return value;
+}
+
+function readNonNegativeInteger(record: Record<string, unknown>, key: string, path: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${path}.${key}: expected non-negative integer`);
   }
   return value;
 }

@@ -20,14 +20,16 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 ## 현재 작업
 
-현재 작업은 `007_social_allow_list` MVP 구현과 검증까지 완료했다.
+현재 작업은 `007B_social_live_collectors` 구현과 검증을 진행 중이다.
 
 다음 v2 구현 후보는 두 갈래다.
 
-1. `007B_social_live_collectors`: Slack 일일 digest 품질을 먼저 올리고 싶을 때 진행한다. HN/Reddit live polling을 우선 구현하고 X/Threads는 계속 Deferred로 둔다.
+1. `007C_llm_digest_intelligence`: LLM 요약, 중요도 판단, why/practicalImpact, token/cost logging을 먼저 붙이고 싶을 때 진행한다.
 2. `008_domain_expansion`: Backend, Frontend, DevOps 도메인 확장을 먼저 하고 싶을 때 진행한다.
 
 007에서 일부러 제외한 X/Threads live collector와 HN/Reddit live polling runner는 `007B_social_live_collectors` 후속 확장 backlog로 둔다. 단, X/Threads는 토큰 범위, rate limit, platform policy, app review 확인 전까지 구현하지 않는다.
+
+LLM 요약/판단은 `007C_llm_digest_intelligence` 후속 확장 backlog로 둔다. 크롤링과 Slack 발송은 token 없이 가능하지만, 사용자가 읽을 요약과 중요도 판단은 007C에서 LLM provider와 token/cost logging을 붙인다.
 
 작업 문서:
 
@@ -75,6 +77,10 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 - [Task 007B Plan](task/007B_social_live_collectors/plan.md)
 - [Task 007B Implementation Sequence](task/007B_social_live_collectors/implementation-sequence.md)
 - [Task 007B Phase Status](task/007B_social_live_collectors/phase_status.md)
+- [Task 007C Requirements](task/007C_llm_digest_intelligence/requirements.md)
+- [Task 007C Plan](task/007C_llm_digest_intelligence/plan.md)
+- [Task 007C Implementation Sequence](task/007C_llm_digest_intelligence/implementation-sequence.md)
+- [Task 007C Phase Status](task/007C_llm_digest_intelligence/phase_status.md)
 
 완료 확인 산출물:
 
@@ -92,6 +98,8 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 - [Task 006 Completion HTML](showcase/006_gcp_deployment/completion.html)
 - [Task 007 Completion Markdown](showcase/007_social_allow_list/completion.md)
 - [Task 007 Completion HTML](showcase/007_social_allow_list/completion.html)
+- [Task 007B Completion Markdown](showcase/007B_social_live_collectors/completion.md)
+- [Task 007B Completion HTML](showcase/007B_social_live_collectors/completion.html)
 
 외부 확인 URL:
 
@@ -103,6 +111,7 @@ http://34.22.67.160/ai-trend-agent/showcase/004_slack_manual_delivery/completion
 http://34.22.67.160/ai-trend-agent/showcase/005_hermes_cron/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/006_gcp_deployment/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.html
+http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html
 ```
 
 ## 작업 흐름 문서

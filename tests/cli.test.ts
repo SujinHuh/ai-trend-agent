@@ -673,6 +673,14 @@ describe("CLI", () => {
           keywords: ["ai"],
           officialDomainsToConfirm: ["openai.com"],
           rateLimit: { maxRequestsPerWindow: 1, windowSeconds: 60 },
+          livePolling: {
+            pollingIntervalMinutes: 1440,
+            cacheTtlMinutes: 1440,
+            timeoutMs: 5000,
+            maxItemsPerFetch: 10,
+            retryCount: 0,
+            backoffMs: 0
+          },
           security: { requiresToken: false },
           policyReviewedAt: "2026-08-02",
           policyNotes: "public links only"
@@ -713,6 +721,91 @@ describe("CLI", () => {
         {
           sourceId: "manual-public-ai-links",
           confirmationStatus: "needs_confirmation"
+        }
+      ]
+    });
+  }, 30000);
+
+  it("runs social poll dry-run for an enabled Reddit RSS source", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "social-poll-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const socialConfigPath = join(tempDir, "social.json");
+    const cacheRoot = join(tempDir, "cache");
+    const stdout: string[] = [];
+
+    writeFileSync(
+      socialConfigPath,
+      JSON.stringify([
+        {
+          id: "reddit-local-llama",
+          platform: "reddit",
+          displayName: "Reddit LocalLLaMA RSS",
+          credibility: "community",
+          collectionMethod: "rss",
+          enabled: true,
+          defaultConfirmationStatus: "needs_confirmation",
+          handles: [],
+          accountIds: [],
+          subreddits: ["LocalLLaMA"],
+          keywords: ["llm"],
+          officialDomainsToConfirm: ["openai.com"],
+          rateLimit: { maxRequestsPerWindow: 12, windowSeconds: 60 },
+          livePolling: {
+            pollingIntervalMinutes: 60,
+            cacheTtlMinutes: 30,
+            timeoutMs: 5000,
+            maxItemsPerFetch: 5,
+            retryCount: 0,
+            backoffMs: 0
+          },
+          security: { requiresToken: false },
+          policyReviewedAt: "2026-08-02",
+          policyNotes: "rss only"
+        }
+      ])
+    );
+
+    await runCliCommand(
+      [
+        "social:poll",
+        `--db=${dbPath}`,
+        `--social-config=${socialConfigPath}`,
+        `--cache-root=${cacheRoot}`,
+        "--date=2026-08-03",
+        "--dry-run"
+      ],
+      {
+        fetcher: async () => ({
+          status: 200,
+          headers: { "content-type": "application/atom+xml" },
+          body: [
+            "<feed>",
+            "<entry>",
+            "<title>LLM model discussion</title>",
+            "<author><name>reddit_user</name></author>",
+            "<updated>2026-08-03T00:00:00Z</updated>",
+            "<link href=\"https://www.reddit.com/r/LocalLLaMA/comments/cli\" />",
+            "<content>Community-only LLM signal</content>",
+            "</entry>",
+            "</feed>"
+          ].join("")
+        }),
+        stdout: (value) => stdout.push(value)
+      }
+    );
+
+    expect(JSON.parse(stdout[0] ?? "{}")).toMatchObject({
+      reportDate: "2026-08-03",
+      dryRun: true,
+      sourceCount: 1,
+      polledSourceCount: 1,
+      savedCount: 0,
+      results: [
+        {
+          sourceId: "reddit-local-llama",
+          normalizedCount: 1,
+          savedCount: 0,
+          items: [{ confirmationStatus: "needs_confirmation" }]
         }
       ]
     });

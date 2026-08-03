@@ -27,7 +27,8 @@
     "cron:serve": "node --import tsx src/cli.ts cron:serve",
     "social:validate": "node --import tsx src/cli.ts social:validate",
     "social:import": "node --import tsx src/cli.ts social:import",
-    "social:list": "node --import tsx src/cli.ts social:list"
+    "social:list": "node --import tsx src/cli.ts social:list",
+    "social:poll": "node --import tsx src/cli.ts social:poll"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.1"

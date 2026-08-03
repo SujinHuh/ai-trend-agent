@@ -16,6 +16,38 @@
 6. 로컬 또는 GCP 공개 경로에서 HTML이 열리는지 확인한다.
 7. 실제 확인 URL과 검증 결과를 `docs/logs/YYYY-MM-DD.md`에 기록한다.
 
+## HTML 형식 기준
+
+새 completion HTML은 기존 v2 completion HTML 형식을 따른다. 새 스타일을 만들지 말고 기준 파일의 구조와 CSS skeleton을 복사한 뒤 task 내용만 바꾼다.
+
+기준 파일:
+
+```text
+docs/showcase/003_trenditem_ranking/completion.html
+docs/showcase/004_slack_manual_delivery/completion.html
+```
+
+일관성 규칙:
+
+- `<html lang="ko">`를 사용한다.
+- `:root`에 `--bg`, `--panel`, `--text`, `--muted`, `--line`, `--accent`, `--ok`, `--warn`, `--code-bg`, `--code-text`를 둔다.
+- `main` 폭은 `1120px`, padding은 `40px 24px 56px`를 따른다.
+- 첫 영역은 `header`로 두고, `.status`, `h1`, 한 문단 요약을 둔다.
+- 첫 grid는 metric 카드 4개를 둔다.
+- 주요 내용은 `.grid`와 `.card` 조합으로 배치한다.
+- card radius는 기존처럼 `8px` 이하로 유지한다.
+- 검증 명령은 기존처럼 밝은 `pre code` 블록으로 표시한다.
+- 보고서 섹션은 가능한 한 아래 순서를 따른다.
+  - metrics grid
+  - 무엇을 만들었나
+  - CLI로 직접 확인
+  - Validation / 검수 반영
+  - 제외한 것
+  - 다음 작업
+  - 확인 링크
+- 사용자 확인 링크는 GCP 공개 URL을 우선 표기한다.
+- localhost URL은 내부 확인용으로만 쓰고, 최종 사용자-facing 링크로 쓰지 않는다.
+
 ## 파일 경로
 
 ```text

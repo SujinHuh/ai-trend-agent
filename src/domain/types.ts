@@ -172,6 +172,14 @@ export interface SocialSignalSource {
     maxRequestsPerWindow: number;
     windowSeconds: number;
   };
+  livePolling: {
+    pollingIntervalMinutes: number;
+    cacheTtlMinutes: number;
+    timeoutMs: number;
+    maxItemsPerFetch: number;
+    retryCount: number;
+    backoffMs: number;
+  };
   security: {
     requiresToken: boolean;
     secretEnvName: string | null;

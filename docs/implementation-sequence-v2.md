@@ -236,6 +236,42 @@ MVP 완료 기준:
 - [docs/task/007B_social_live_collectors/requirements.md](task/007B_social_live_collectors/requirements.md)
 - [docs/task/007B_social_live_collectors/implementation-sequence.md](task/007B_social_live_collectors/implementation-sequence.md)
 
+### 7C. LLM digest intelligence 선택 확장
+
+목표:
+
+- Slack daily digest가 단순 링크 목록이 아니라, 사용자가 바로 읽을 수 있는 LLM 요약과 판단을 포함하게 한다.
+
+진행 조건:
+
+- 007B 이후 HN/Reddit live signal을 포함한 후보를 LLM이 판단하게 만들고 싶을 때 진행한다.
+- 또는 008 도메인 확장보다 daily AI trend 요약 품질 개선이 더 급하면 007C를 먼저 진행한다.
+- crawler-only mode는 계속 유지한다. LLM이 꺼져 있어도 수집, 저장, ranking, Slack 발송은 동작해야 한다.
+- LLM 비용을 제한하기 위해 deterministic ranking 상위 5-10개 후보만 기본 입력으로 사용한다.
+
+주요 산출물:
+
+- LLM provider abstraction
+- prompt builder with secret redaction
+- structured response parser
+- `summary`, `whyItMatters`, `practicalImpact`
+- importance, urgency, action level, user-interest relevance judgment
+- token/cost usage log
+- deterministic fallback
+- Slack digest enrichment handoff
+
+보안/비용 경계:
+
+- Slack webhook URL, `CRON_SECRET`, OAuth token, API key, auth code는 prompt에 넣지 않는다.
+- LLM output은 social-only claim을 `confirmed`로 승격할 수 없다.
+- 매 실행마다 input/output token과 estimated cost를 기록한다.
+
+참고:
+
+- [docs/llm-token-cost-plan.md](llm-token-cost-plan.md)
+- [docs/task/007C_llm_digest_intelligence/requirements.md](task/007C_llm_digest_intelligence/requirements.md)
+- [docs/task/007C_llm_digest_intelligence/implementation-sequence.md](task/007C_llm_digest_intelligence/implementation-sequence.md)
+
 ### 8. Backend, Frontend, DevOps 도메인 확장
 
 목표:
@@ -467,4 +503,27 @@ Task 007 GCP nginx 공개 URL:
 
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.html
+```
+
+Task 007B 완료 확인 산출물:
+
+- [docs/showcase/007B_social_live_collectors/completion.md](showcase/007B_social_live_collectors/completion.md)
+- [docs/showcase/007B_social_live_collectors/completion.html](showcase/007B_social_live_collectors/completion.html)
+
+Task 007B 로컬 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/007B_social_live_collectors/completion.html
+```
+
+Task 007B 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/007B_social_live_collectors/completion.html
+```
+
+Task 007B GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html
 ```
