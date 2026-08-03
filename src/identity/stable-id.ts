@@ -83,6 +83,10 @@ export function createLlmUsageLogId(input: {
   return `llm_usage_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createPersonalizationFeedbackId(eventKey: string): string {
+  return `feedback_${sha256(eventKey).slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

@@ -573,3 +573,14 @@ Task 008 GCP nginx 공개 URL:
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion.html
 ```
+
+Task 009 완료 확인 산출물:
+
+- [docs/showcase/009_personalization/completion.md](showcase/009_personalization/completion.md)
+- [docs/showcase/009_personalization/completion.html](showcase/009_personalization/completion.html)
+
+Task 009 GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/009_personalization/completion.html
+```

@@ -14,6 +14,12 @@ export function initializeSchema(db: SqliteDatabase): void {
   if (sqliteObjectExists(db, "table", "llm_usage_logs")) {
     assertLlmUsageLogsSchema(db);
   }
+  if (sqliteObjectExists(db, "table", "user_interest_profiles")) {
+    assertUserInterestProfilesSchema(db);
+  }
+  if (sqliteObjectExists(db, "table", "personalization_feedback")) {
+    assertPersonalizationFeedbackSchema(db);
+  }
   try {
     db.exec(`
     CREATE TABLE IF NOT EXISTS trend_items (
@@ -178,6 +184,31 @@ export function initializeSchema(db: SqliteDatabase): void {
 	      created_at TEXT NOT NULL
 	    );
 
+	    CREATE TABLE IF NOT EXISTS user_interest_profiles (
+	      id TEXT PRIMARY KEY,
+	      high_priority_tags_json TEXT NOT NULL,
+	      normal_priority_tags_json TEXT NOT NULL,
+	      muted_tags_json TEXT NOT NULL,
+	      enabled_domains_json TEXT NOT NULL,
+	      blocked_keywords_json TEXT NOT NULL,
+	      preferred_delivery_time TEXT NOT NULL,
+	      timezone TEXT NOT NULL CHECK (timezone = 'Asia/Seoul'),
+	      created_at TEXT NOT NULL,
+	      updated_at TEXT NOT NULL
+	    );
+
+	    CREATE TABLE IF NOT EXISTS personalization_feedback (
+	      id TEXT PRIMARY KEY,
+	      event_key TEXT NOT NULL UNIQUE,
+	      user_profile_id TEXT NOT NULL,
+	      trend_item_id TEXT NOT NULL,
+	      action TEXT NOT NULL CHECK (action IN ('interested', 'save_later', 'hide')),
+	      occurred_at TEXT NOT NULL,
+	      created_at TEXT NOT NULL,
+	      FOREIGN KEY (user_profile_id) REFERENCES user_interest_profiles(id) ON DELETE CASCADE,
+	      FOREIGN KEY (trend_item_id) REFERENCES trend_items(id) ON DELETE CASCADE
+	    );
+
     CREATE INDEX IF NOT EXISTS idx_digests_report_date ON digests(report_date);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_trend_item_id ON source_evidence(trend_item_id);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_fetched_at ON source_evidence(fetched_at);
@@ -206,6 +237,10 @@ export function initializeSchema(db: SqliteDatabase): void {
 	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_published_at ON social_signal_items(published_at);
 	    CREATE INDEX IF NOT EXISTS idx_llm_usage_logs_report_date ON llm_usage_logs(report_date);
 	    CREATE INDEX IF NOT EXISTS idx_llm_usage_logs_created_at ON llm_usage_logs(created_at);
+	    CREATE INDEX IF NOT EXISTS idx_personalization_feedback_user_time
+	      ON personalization_feedback(user_profile_id, occurred_at DESC);
+	    CREATE INDEX IF NOT EXISTS idx_personalization_feedback_user_item
+	      ON personalization_feedback(user_profile_id, trend_item_id, occurred_at DESC);
 	    `);
   } catch (error) {
     throwSlackSchemaDriftError(error);
@@ -214,7 +249,9 @@ export function initializeSchema(db: SqliteDatabase): void {
   assertCronRunsSchema(db);
   assertSocialSignalItemsSchema(db);
   assertLlmUsageLogsSchema(db);
-  db.pragma("user_version = 7");
+  assertUserInterestProfilesSchema(db);
+  assertPersonalizationFeedbackSchema(db);
+  db.pragma("user_version = 8");
 }
 
 function sqliteObjectExists(db: SqliteDatabase, type: string, name: string): boolean {
@@ -255,8 +292,109 @@ function isKnownSchemaDriftError(message: string): boolean {
     message.includes("linked_official_evidence_ids_json") ||
     message.includes("llm_usage_logs") ||
     message.includes("input_tokens") ||
-    message.includes("estimated_cost_usd")
+    message.includes("estimated_cost_usd") ||
+    message.includes("user_interest_profiles") ||
+    message.includes("personalization_feedback") ||
+    message.includes("event_key")
   );
+}
+
+function assertUserInterestProfilesSchema(db: SqliteDatabase): void {
+  assertExactColumns(db, "user_interest_profiles", [
+    ["id", "TEXT", false, true],
+    ["high_priority_tags_json", "TEXT", true, false],
+    ["normal_priority_tags_json", "TEXT", true, false],
+    ["muted_tags_json", "TEXT", true, false],
+    ["enabled_domains_json", "TEXT", true, false],
+    ["blocked_keywords_json", "TEXT", true, false],
+    ["preferred_delivery_time", "TEXT", true, false],
+    ["timezone", "TEXT", true, false],
+    ["created_at", "TEXT", true, false],
+    ["updated_at", "TEXT", true, false]
+  ]);
+  const tableSql = getNormalizedTableSql(db, "user_interest_profiles");
+  if (!tableSql.includes("timezone = 'asia/seoul'")) {
+    throw new Error("user_interest_profiles schema drift: missing timezone CHECK constraint");
+  }
+}
+
+function assertPersonalizationFeedbackSchema(db: SqliteDatabase): void {
+  assertExactColumns(db, "personalization_feedback", [
+    ["id", "TEXT", false, true],
+    ["event_key", "TEXT", true, false],
+    ["user_profile_id", "TEXT", true, false],
+    ["trend_item_id", "TEXT", true, false],
+    ["action", "TEXT", true, false],
+    ["occurred_at", "TEXT", true, false],
+    ["created_at", "TEXT", true, false]
+  ]);
+  assertIndexColumns(db, "idx_personalization_feedback_user_time", ["user_profile_id", "occurred_at"]);
+  assertIndexColumns(db, "idx_personalization_feedback_user_item", [
+    "user_profile_id",
+    "trend_item_id",
+    "occurred_at"
+  ]);
+  const tableSql = getNormalizedTableSql(db, "personalization_feedback");
+  if (!tableSql.includes("event_key text not null unique")) {
+    throw new Error("personalization_feedback schema drift: missing event_key UNIQUE constraint");
+  }
+  if (!tableSql.includes("action in ('interested', 'save_later', 'hide')")) {
+    throw new Error("personalization_feedback schema drift: missing action CHECK constraint");
+  }
+  const foreignKeys = db.prepare("PRAGMA foreign_key_list(personalization_feedback)").all() as Array<{
+    table: string;
+    from: string;
+    on_delete: string;
+  }>;
+  const expectedForeignKeys = [
+    { table: "user_interest_profiles", from: "user_profile_id" },
+    { table: "trend_items", from: "trend_item_id" }
+  ];
+  for (const expected of expectedForeignKeys) {
+    const foreignKey = foreignKeys.find(
+      (candidate) => candidate.table === expected.table && candidate.from === expected.from
+    );
+    if (foreignKey === undefined || foreignKey.on_delete.toUpperCase() !== "CASCADE") {
+      throw new Error(`personalization_feedback schema drift: invalid foreign key ${expected.from}`);
+    }
+  }
+}
+
+function getNormalizedTableSql(db: SqliteDatabase, table: string): string {
+  const sql = db.prepare(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`
+  ).pluck().get(table) as string | undefined;
+  if (sql === undefined) {
+    throw new Error(`${table} schema drift: missing table SQL`);
+  }
+  return sql.replace(/\s+/g, " ").toLowerCase();
+}
+
+function assertExactColumns(
+  db: SqliteDatabase,
+  table: string,
+  expected: Array<[string, string, boolean, boolean]>
+): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    pk: number;
+  }>;
+  if (columns.length !== expected.length) {
+    throw new Error(`${table} schema drift: expected ${expected.length} columns, found ${columns.length}`);
+  }
+  for (const [name, type, notnull, pk] of expected) {
+    const column = columns.find((candidate) => candidate.name === name);
+    if (
+      column === undefined ||
+      column.type.toUpperCase() !== type ||
+      Boolean(column.notnull) !== notnull ||
+      Boolean(column.pk) !== pk
+    ) {
+      throw new Error(`${table} schema drift: invalid column ${name}`);
+    }
+  }
 }
 
 function assertLlmUsageLogsSchema(db: SqliteDatabase): void {

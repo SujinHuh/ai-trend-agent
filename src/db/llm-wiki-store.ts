@@ -8,6 +8,8 @@ import type {
   DigestCandidate,
   DigestWithItems,
   LlmUsageLog,
+  PersonalizationFeedback,
+  PersonalizationFeedbackAction,
   SlackDeliveryAttempt,
   SlackDeliveryStatus,
   SocialConfirmationStatus,
@@ -18,13 +20,15 @@ import type {
   TrendAssessmentInput,
   TrendAssessmentLineage,
   TrendCategory,
-  TrendItem
+  TrendItem,
+  UserInterestProfile
 } from "../domain/types.js";
 import {
   createCronRunId,
   createDigestId,
   createEvidenceId,
   createLlmUsageLogId,
+  createPersonalizationFeedbackId,
   createSlackDeliveryAttemptId,
   createSocialSignalId,
   createTrendAssessmentId,
@@ -145,6 +149,29 @@ interface SocialSignalItemRow {
   updated_at: string;
 }
 
+interface UserInterestProfileRow {
+  id: string;
+  high_priority_tags_json: string;
+  normal_priority_tags_json: string;
+  muted_tags_json: string;
+  enabled_domains_json: string;
+  blocked_keywords_json: string;
+  preferred_delivery_time: string;
+  timezone: "Asia/Seoul";
+  created_at: string;
+  updated_at: string;
+}
+
+interface PersonalizationFeedbackRow {
+  id: string;
+  event_key: string;
+  user_profile_id: string;
+  trend_item_id: string;
+  action: PersonalizationFeedbackAction;
+  occurred_at: string;
+  created_at: string;
+}
+
 export interface SaveTrendItemInput {
   sourceUrl: string;
   title: string;
@@ -243,6 +270,25 @@ export interface SaveSocialSignalItemInput {
   outboundUrls: string[];
   confirmationStatus: SocialConfirmationStatus;
   linkedOfficialEvidenceIds: string[];
+}
+
+export interface SaveUserInterestProfileInput {
+  id: string;
+  highPriorityTags?: string[];
+  normalPriorityTags?: string[];
+  mutedTags?: string[];
+  enabledDomains?: Array<"ai" | "backend" | "frontend" | "devops">;
+  blockedKeywords?: string[];
+  preferredDeliveryTime?: string;
+  updatedAt?: string;
+}
+
+export interface SavePersonalizationFeedbackInput {
+  eventKey: string;
+  userProfileId: string;
+  trendItemId: string;
+  action: PersonalizationFeedbackAction;
+  occurredAt: string;
 }
 
 export class LlmWikiStore {
@@ -623,7 +669,8 @@ export class LlmWikiStore {
     return rows.map(mapSourceEvidence);
   }
 
-  listDigestCandidates(reportDate: string, limit: number): DigestCandidate[] {
+  listDigestCandidates(reportDate: string, limit?: number): DigestCandidate[] {
+    const limitClause = limit === undefined ? "" : "LIMIT ?";
     const assessmentRows = this.db
       .prepare(
         `
@@ -652,10 +699,10 @@ export class LlmWikiStore {
             trend_assessments.confidence DESC,
             COALESCE(t.published_at, '') DESC,
             trend_assessments.trend_item_id ASC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(reportDate, limit) as TrendAssessmentRow[];
+      .all(...(limit === undefined ? [reportDate] : [reportDate, limit])) as TrendAssessmentRow[];
 
     return assessmentRows.map((assessmentRow) => {
       const assessment = mapTrendAssessment(assessmentRow);
@@ -670,6 +717,21 @@ export class LlmWikiStore {
         lineage: this.listTrendAssessmentLineage(assessment.id)
       };
     });
+  }
+
+  getLatestTrendAssessmentForTrendItem(trendItemId: string): TrendAssessment | null {
+    const row = this.db.prepare(
+      `
+        SELECT id, trend_item_id, report_date, summary, why_it_matters, practical_impact,
+          trend_category, action_level, confirmation_status, confidence, importance_score,
+          contradiction_notes, staleness_policy, created_at, updated_at
+        FROM trend_assessments
+        WHERE trend_item_id = ?
+        ORDER BY report_date DESC, updated_at DESC
+        LIMIT 1
+      `
+    ).get(trendItemId) as TrendAssessmentRow | undefined;
+    return row === undefined ? null : mapTrendAssessment(row);
   }
 
   listTrendAssessmentLineage(assessmentId: string): TrendAssessmentLineage[] {
@@ -1274,6 +1336,150 @@ export class LlmWikiStore {
     return rows.map(mapLlmUsageLog);
   }
 
+  saveUserInterestProfile(input: SaveUserInterestProfileInput): UserInterestProfile {
+    const id = normalizeIdentifier(input.id, "profile id");
+    const existing = this.getUserInterestProfile(id);
+    const updatedAt = input.updatedAt ?? new Date().toISOString();
+    const highPriorityTags = normalizePreferenceValues(input.highPriorityTags ?? existing?.highPriorityTags ?? []);
+    const normalPriorityTags = normalizePreferenceValues(input.normalPriorityTags ?? existing?.normalPriorityTags ?? []);
+    const mutedTags = normalizePreferenceValues(input.mutedTags ?? existing?.mutedTags ?? []);
+    const blockedKeywords = normalizePreferenceValues(input.blockedKeywords ?? existing?.blockedKeywords ?? []);
+    const enabledDomains = normalizeProfileDomains(input.enabledDomains ?? existing?.enabledDomains ?? ["ai"]);
+    const preferredDeliveryTime = input.preferredDeliveryTime ?? existing?.preferredDeliveryTime ?? "07:00";
+    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(preferredDeliveryTime)) {
+      throw new Error("preferredDeliveryTime must use HH:MM format");
+    }
+
+    this.db.prepare(
+      `
+        INSERT INTO user_interest_profiles (
+          id, high_priority_tags_json, normal_priority_tags_json, muted_tags_json,
+          enabled_domains_json, blocked_keywords_json, preferred_delivery_time,
+          timezone, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Asia/Seoul', ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          high_priority_tags_json = excluded.high_priority_tags_json,
+          normal_priority_tags_json = excluded.normal_priority_tags_json,
+          muted_tags_json = excluded.muted_tags_json,
+          enabled_domains_json = excluded.enabled_domains_json,
+          blocked_keywords_json = excluded.blocked_keywords_json,
+          preferred_delivery_time = excluded.preferred_delivery_time,
+          updated_at = excluded.updated_at
+      `
+    ).run(
+      id,
+      JSON.stringify(highPriorityTags),
+      JSON.stringify(normalPriorityTags),
+      JSON.stringify(mutedTags),
+      JSON.stringify(enabledDomains),
+      JSON.stringify(blockedKeywords),
+      preferredDeliveryTime,
+      existing?.createdAt ?? updatedAt,
+      updatedAt
+    );
+
+    const profile = this.getUserInterestProfile(id);
+    if (profile === null) {
+      throw new Error(`UserInterestProfile was not saved: ${id}`);
+    }
+    return profile;
+  }
+
+  getUserInterestProfile(id: string): UserInterestProfile | null {
+    const normalizedId = normalizeIdentifier(id, "profile id");
+    const row = this.db.prepare(
+      `
+        SELECT id, high_priority_tags_json, normal_priority_tags_json, muted_tags_json,
+          enabled_domains_json, blocked_keywords_json, preferred_delivery_time,
+          timezone, created_at, updated_at
+        FROM user_interest_profiles
+        WHERE id = ?
+      `
+    ).get(normalizedId) as UserInterestProfileRow | undefined;
+    return row === undefined ? null : mapUserInterestProfile(row);
+  }
+
+  savePersonalizationFeedback(input: SavePersonalizationFeedbackInput): PersonalizationFeedback {
+    const eventKey = normalizeIdentifier(input.eventKey, "feedback event key", 200);
+    const userProfileId = normalizeIdentifier(input.userProfileId, "profile id");
+    if (!(["interested", "save_later", "hide"] as string[]).includes(input.action)) {
+      throw new Error(`Unsupported feedback action: ${input.action}`);
+    }
+    const occurredAtDate = new Date(input.occurredAt);
+    if (Number.isNaN(occurredAtDate.getTime())) {
+      throw new Error("occurredAt must be an ISO date-time");
+    }
+    const occurredAt = occurredAtDate.toISOString();
+    const existing = this.getPersonalizationFeedbackByEventKey(eventKey);
+    if (existing !== null) {
+      if (
+        existing.userProfileId !== userProfileId ||
+        existing.trendItemId !== input.trendItemId ||
+        existing.action !== input.action
+      ) {
+        throw new Error(`Feedback event key already exists with different content: ${eventKey}`);
+      }
+      return existing;
+    }
+    if (this.getUserInterestProfile(userProfileId) === null) {
+      throw new Error(`Unknown user profile: ${userProfileId}`);
+    }
+    if (this.getTrendItem(input.trendItemId) === null) {
+      throw new Error(`Unknown TrendItem: ${input.trendItemId}`);
+    }
+    const id = createPersonalizationFeedbackId(eventKey);
+    this.db.prepare(
+      `
+        INSERT INTO personalization_feedback (
+          id, event_key, user_profile_id, trend_item_id, action, occurred_at, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(event_key) DO NOTHING
+      `
+    ).run(id, eventKey, userProfileId, input.trendItemId, input.action, occurredAt, new Date().toISOString());
+
+    const feedback = this.getPersonalizationFeedbackByEventKey(eventKey);
+    if (feedback === null) {
+      throw new Error(`Personalization feedback was not saved: ${eventKey}`);
+    }
+    if (
+      feedback.userProfileId !== userProfileId ||
+      feedback.trendItemId !== input.trendItemId ||
+      feedback.action !== input.action
+    ) {
+      throw new Error(`Feedback event key already exists with different content: ${eventKey}`);
+    }
+    return feedback;
+  }
+
+  getPersonalizationFeedbackByEventKey(eventKey: string): PersonalizationFeedback | null {
+    const normalizedEventKey = normalizeIdentifier(eventKey, "feedback event key", 200);
+    const row = this.db.prepare(
+      `
+        SELECT id, event_key, user_profile_id, trend_item_id, action, occurred_at, created_at
+        FROM personalization_feedback
+        WHERE event_key = ?
+      `
+    ).get(normalizedEventKey) as PersonalizationFeedbackRow | undefined;
+    return row === undefined ? null : mapPersonalizationFeedback(row);
+  }
+
+  listPersonalizationFeedback(userProfileId: string, occurredBefore?: string): PersonalizationFeedback[] {
+    const normalizedId = normalizeIdentifier(userProfileId, "profile id");
+    const cutoff = occurredBefore === undefined ? undefined : normalizeIsoDateTime(occurredBefore, "feedback cutoff");
+    const rows = this.db.prepare(
+      `
+        SELECT id, event_key, user_profile_id, trend_item_id, action, occurred_at, created_at
+        FROM personalization_feedback
+        WHERE user_profile_id = ?
+          ${cutoff === undefined ? "" : "AND occurred_at < ?"}
+        ORDER BY occurred_at DESC, id DESC
+      `
+    ).all(...(cutoff === undefined ? [normalizedId] : [normalizedId, cutoff])) as PersonalizationFeedbackRow[];
+    return rows.map(mapPersonalizationFeedback);
+  }
+
   private updateCronRun(id: string, status: CronRunStatus, input: CompleteCronRunInput): CronRun {
     this.db
       .prepare(
@@ -1496,13 +1702,76 @@ function mapSocialSignalItem(row: SocialSignalItemRow): SocialSignalItem {
   };
 }
 
+function mapUserInterestProfile(row: UserInterestProfileRow): UserInterestProfile {
+  return {
+    id: row.id,
+    highPriorityTags: parseStringArray(row.high_priority_tags_json, "high_priority_tags_json"),
+    normalPriorityTags: parseStringArray(row.normal_priority_tags_json, "normal_priority_tags_json"),
+    mutedTags: parseStringArray(row.muted_tags_json, "muted_tags_json"),
+    enabledDomains: normalizeProfileDomains(parseStringArray(row.enabled_domains_json, "enabled_domains_json")),
+    blockedKeywords: parseStringArray(row.blocked_keywords_json, "blocked_keywords_json"),
+    preferredDeliveryTime: row.preferred_delivery_time,
+    timezone: row.timezone,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapPersonalizationFeedback(row: PersonalizationFeedbackRow): PersonalizationFeedback {
+  return {
+    id: row.id,
+    eventKey: row.event_key,
+    userProfileId: row.user_profile_id,
+    trendItemId: row.trend_item_id,
+    action: row.action,
+    occurredAt: row.occurred_at,
+    createdAt: row.created_at
+  };
+}
+
+function normalizeIdentifier(value: string, label: string, maxLength = 100): string {
+  const normalized = value.trim();
+  if (normalized.length === 0 || normalized.length > maxLength || /[\r\n\0]/.test(normalized)) {
+    throw new Error(`${label} must be between 1 and ${maxLength} safe characters`);
+  }
+  return normalized;
+}
+
+function normalizePreferenceValues(values: string[]): string[] {
+  if (values.length > 100) {
+    throw new Error("preference arrays may contain at most 100 values");
+  }
+  const normalized = values.map((value) => value.trim().toLowerCase()).filter(Boolean);
+  if (normalized.some((value) => value.length > 80 || /[\r\n\0]/.test(value))) {
+    throw new Error("preference values must contain at most 80 safe characters");
+  }
+  return [...new Set(normalized)].sort();
+}
+
+function normalizeProfileDomains(values: string[]): Array<"ai" | "backend" | "frontend" | "devops"> {
+  const allowed = new Set(["ai", "backend", "frontend", "devops"]);
+  const normalized = normalizePreferenceValues(values);
+  if (normalized.length === 0 || normalized.some((value) => !allowed.has(value))) {
+    throw new Error("enabledDomains must contain ai, backend, frontend, or devops");
+  }
+  return normalized as Array<"ai" | "backend" | "frontend" | "devops">;
+}
+
 function parseStringArray(value: string, label: string): string[] {
   const parsed = JSON.parse(value) as unknown;
   if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
-    throw new Error(`social_signal_items data drift: ${label} must be a string array`);
+    throw new Error(`JSON data drift: ${label} must be a string array`);
   }
 
   return parsed;
+}
+
+function normalizeIsoDateTime(value: string, label: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${label} must be an ISO date-time`);
+  }
+  return date.toISOString();
 }
 
 function getKstReportDateWindow(reportDate: string): { startUtc: string; endUtc: string } {

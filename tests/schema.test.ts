@@ -27,7 +27,9 @@ describe("SQLite schema", () => {
               'trend_assessments',
               'trend_assessment_lineage',
               'slack_delivery_attempts',
-              'social_signal_items'
+              'social_signal_items',
+              'user_interest_profiles',
+              'personalization_feedback'
             )
           ORDER BY name
         `
@@ -38,12 +40,14 @@ describe("SQLite schema", () => {
     expect(tables).toEqual([
       "digest_trend_items",
       "digests",
+      "personalization_feedback",
       "slack_delivery_attempts",
       "social_signal_items",
       "source_evidence",
       "trend_assessment_lineage",
       "trend_assessments",
-      "trend_items"
+      "trend_items",
+      "user_interest_profiles"
     ]);
     db.close();
   });
@@ -224,7 +228,9 @@ describe("SQLite schema", () => {
               'idx_social_signal_items_source_id',
               'idx_social_signal_items_confirmation_status',
               'idx_llm_usage_logs_report_date',
-              'idx_llm_usage_logs_created_at'
+              'idx_llm_usage_logs_created_at',
+              'idx_personalization_feedback_user_time',
+              'idx_personalization_feedback_user_item'
             )
           ORDER BY name
         `
@@ -237,6 +243,8 @@ describe("SQLite schema", () => {
       "idx_digests_report_date",
       "idx_llm_usage_logs_created_at",
       "idx_llm_usage_logs_report_date",
+      "idx_personalization_feedback_user_item",
+      "idx_personalization_feedback_user_time",
       "idx_slack_delivery_attempts_duplicate_guard",
       "idx_slack_delivery_attempts_report_date",
       "idx_slack_delivery_attempts_sent_at",
@@ -248,7 +256,7 @@ describe("SQLite schema", () => {
       "idx_trend_assessments_report_date",
       "idx_trend_assessments_score"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(7);
+    expect(db.pragma("user_version", { simple: true })).toBe(8);
     db.close();
   });
 
@@ -314,7 +322,37 @@ describe("SQLite schema", () => {
       "trend_assessments",
       "trend_items"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(7);
+    expect(db.pragma("user_version", { simple: true })).toBe(8);
+    db.close();
+  });
+
+  it("upgrades a version 7 database with personalization tables without losing trend items", () => {
+    const db = openSqliteDatabase(":memory:");
+    db.exec(`
+      CREATE TABLE trend_items (
+        id TEXT PRIMARY KEY,
+        canonical_url TEXT NOT NULL UNIQUE,
+        canonical_hash TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        source_name TEXT NOT NULL,
+        published_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+      INSERT INTO trend_items (id, canonical_url, canonical_hash, title, source_name, published_at)
+      VALUES ('trend_existing', 'https://example.com/existing', 'hash_existing', 'Existing', 'Example', NULL);
+      PRAGMA user_version = 7;
+    `);
+
+    initializeSchema(db);
+
+    expect(db.pragma("user_version", { simple: true })).toBe(8);
+    expect(db.prepare("SELECT title FROM trend_items WHERE id = 'trend_existing'").pluck().get()).toBe("Existing");
+    expect(
+      db.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('user_interest_profiles', 'personalization_feedback') ORDER BY name"
+      ).pluck().all()
+    ).toEqual(["personalization_feedback", "user_interest_profiles"]);
     db.close();
   });
 

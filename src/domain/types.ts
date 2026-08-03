@@ -160,6 +160,31 @@ export interface LlmUsageLog {
   createdAt: string;
 }
 
+export type PersonalizationFeedbackAction = "interested" | "save_later" | "hide";
+
+export interface UserInterestProfile {
+  id: string;
+  highPriorityTags: string[];
+  normalPriorityTags: string[];
+  mutedTags: string[];
+  enabledDomains: Array<"ai" | "backend" | "frontend" | "devops">;
+  blockedKeywords: string[];
+  preferredDeliveryTime: string;
+  timezone: "Asia/Seoul";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalizationFeedback {
+  id: string;
+  eventKey: string;
+  userProfileId: string;
+  trendItemId: string;
+  action: PersonalizationFeedbackAction;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export type SocialPlatform = "x" | "threads" | "reddit" | "hacker_news" | "newsletter" | "manual";
 export type SocialCredibility = "trusted_individual" | "official_social" | "community";
 export type SocialCollectionMethod = "api" | "rss" | "manual_export" | "html_if_allowed";

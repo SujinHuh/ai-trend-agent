@@ -33,8 +33,8 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
 | 24 | LLM summary provider integration | 007C LLM digest intelligence | Done | Hermes/Ranking agent | Top 5-10 후보 LLM enrichment, provider abstraction, prompt redaction, Slack opt-in handoff 구현 |
 | 25 | LLM token/cost logging | 007C LLM digest intelligence | Done | Ops/Ranking agent | 별도 `llm_usage_logs` 테이블에 input/output tokens, estimated cost 기록 |
-| 26 | user interest reranking | Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
-| 27 | Backend/Frontend/DevOps domain expansion | Task 008 | Review | Domain expansion agent | source domain schema, `enabledDomains`, ranking weight, Slack domain section, CLI/cron handoff 구현 |
+| 26 | user interest reranking | Task 009 | Implemented - PR Review | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬; PR handoff 진행 |
+| 27 | Backend/Frontend/DevOps domain expansion | Task 008 | Done | Domain expansion agent | PR #11 merged; source domain schema, `enabledDomains`, ranking weight, Slack domain section, CLI/cron handoff 구현 |
 
 ## 진행 원칙
 

@@ -20,18 +20,18 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 ## 현재 작업
 
-현재 작업은 `008_domain_expansion` 구현 완료 후 PR handoff를 진행 중이다.
+현재 작업은 `009_personalization` 구현과 독립 검수를 진행 중이다. Task 008 PR #11은 `main`에 병합됐다.
 
-다음 v2 구현 후보는 두 갈래다.
+현재와 다음 v2 구현 순서는 다음과 같다.
 
-1. `009_personalization`: Slack/user preference tuning을 진행한다.
+1. `009_personalization`: Slack/user preference tuning을 진행 중이다.
 2. `010_web_news_view`: LLM Wiki news view를 진행한다.
 
 007에서 일부러 제외한 HN/Reddit live polling runner는 `007B_social_live_collectors`에서 구현됐다. X/Threads는 토큰 범위, rate limit, platform policy, app review 확인 전까지 계속 Deferred로 둔다.
 
 LLM 요약/판단은 `007C_llm_digest_intelligence`에서 provider abstraction, prompt redaction, token/cost logging, Slack opt-in handoff까지 구현됐다. Real external LLM provider SDK adapter는 후속 provider adapter 범위다.
 
-도메인 확장은 `008_domain_expansion`에서 source domain schema, `enabledDomains`, ranking weight, Slack domain section, CLI/cron handoff까지 구현되어 PR handoff 상태다.
+도메인 확장은 `008_domain_expansion`에서 구현되어 PR #11로 병합됐다.
 
 작업 문서:
 
@@ -88,6 +88,11 @@ LLM 요약/판단은 `007C_llm_digest_intelligence`에서 provider abstraction, 
 - [Task 008 Implementation Sequence](task/008_domain_expansion/implementation-sequence.md)
 - [Task 008 Phase Status](task/008_domain_expansion/phase_status.md)
 - [Task 008 Validation Report](task/008_domain_expansion/validation_report.md)
+- [Task 009 Requirements](task/009_personalization/requirements.md)
+- [Task 009 Plan](task/009_personalization/plan.md)
+- [Task 009 Implementation Sequence](task/009_personalization/implementation-sequence.md)
+- [Task 009 Phase Status](task/009_personalization/phase_status.md)
+- [Task 009 Validation Report](task/009_personalization/validation_report.md)
 
 완료 확인 산출물:
 
@@ -111,6 +116,8 @@ LLM 요약/판단은 `007C_llm_digest_intelligence`에서 provider abstraction, 
 - [Task 007C Completion HTML](showcase/007C_llm_digest_intelligence/completion.html)
 - [Task 008 Completion Markdown](showcase/008_domain_expansion/completion.md)
 - [Task 008 Completion HTML](showcase/008_domain_expansion/completion.html)
+- [Task 009 Completion Markdown](showcase/009_personalization/completion.md)
+- [Task 009 Completion HTML](showcase/009_personalization/completion.html)
 
 외부 확인 URL:
 
@@ -125,6 +132,7 @@ http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.htm
 http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/007C_llm_digest_intelligence/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion.html
+http://34.22.67.160/ai-trend-agent/showcase/009_personalization/completion.html
 ```
 
 ## 작업 흐름 문서
