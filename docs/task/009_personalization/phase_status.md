@@ -1,5 +1,9 @@
 # Task 009 Phase Status - Slack 피드백과 개인화
 
+Overall status: `Done`
+
+PR #12 was merged into `main` as merge commit `0474895` at `2026-08-03T15:42:35Z`.
+
 | No. | Step | Status | Notes |
 | --- | --- | --- | --- |
 | 1 | Branch와 dependency 확인 | Done | PR #11 merge 확인 후 최신 `main`에서 `feature/009-personalization` 생성. |
@@ -14,7 +18,7 @@
 | 10 | Validation | Done | typecheck, build, 23 files / 166 tests, diff check 통과. |
 | 11 | Independent review | Done | 세 차례 검수와 지적 반영 후 blocker 0 확인. |
 | 12 | Completion showcase | Done | Korean Markdown/HTML 생성, GCP HTTP 200과 Task 009 본문 확인. |
-| 13 | PR and handoff | Done | PR #12 Open, non-Draft, base main, Korean template body 확인. |
+| 13 | PR and handoff | Done | PR #12 merged into main; merge commit `0474895` 확인. |
 
 ## Gate
 

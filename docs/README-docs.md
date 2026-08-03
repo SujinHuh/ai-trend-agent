@@ -20,12 +20,12 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 ## 현재 작업
 
-현재 작업은 `009_personalization` 구현과 검증을 완료하고 PR #12 검토/병합을 기다리고 있다. Task 008 PR #11은 `main`에 병합됐다.
+Task 009 PR #12까지 `main`에 병합됐다. 현재 다음 구현 대상은 `010_web_news_view`다.
 
 현재와 다음 v2 구현 순서는 다음과 같다.
 
-1. `009_personalization`: Slack/user preference tuning을 진행 중이다.
-2. `010_web_news_view`: LLM Wiki news view를 진행한다.
+1. `009_personalization`: Slack/user preference tuning 구현과 병합 완료.
+2. `010_web_news_view`: LLM Wiki news view를 다음으로 진행한다.
 
 007에서 일부러 제외한 HN/Reddit live polling runner는 `007B_social_live_collectors`에서 구현됐다. X/Threads는 토큰 범위, rate limit, platform policy, app review 확인 전까지 계속 Deferred로 둔다.
 
