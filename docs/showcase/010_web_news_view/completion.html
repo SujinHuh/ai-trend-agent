@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 010 Web News View Completion</title>
+    <style>
+      :root { color-scheme: light; --ink:#17212b; --muted:#52606d; --line:#d8dee4; --paper:#fff; --page:#f4f6f8; --green:#147d64; --blue:#2463a8; --amber:#9a6700; --red:#b42318; }
+      * { box-sizing:border-box; }
+      body { margin:0; background:var(--page); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.6; }
+      main { width:min(1040px,calc(100% - 32px)); margin:0 auto; padding:40px 0 64px; }
+      header { border-top:4px solid var(--green); padding:28px 0 24px; }
+      .status { color:var(--green); font-size:14px; font-weight:800; text-transform:uppercase; }
+      h1 { margin:8px 0; font-size:clamp(32px,5vw,54px); line-height:1.15; }
+      h2 { margin:0 0 16px; font-size:22px; }
+      p { margin:0; }
+      .lead { max-width:760px; color:var(--muted); font-size:18px; }
+      .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+      .actions a { padding:9px 13px; border:1px solid var(--blue); border-radius:5px; background:var(--paper); font-weight:700; text-decoration:none; }
+      .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--line); background:var(--paper); }
+      .metric { min-height:112px; padding:20px; border-right:1px solid var(--line); }
+      .metric:last-child { border-right:0; }
+      .metric strong { display:block; font-size:26px; color:var(--blue); }
+      .metric span { color:var(--muted); font-size:14px; }
+      section { padding:30px 0; border-bottom:1px solid var(--line); }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 32px; }
+      .item { padding-left:14px; border-left:3px solid var(--blue); }
+      .item strong { display:block; margin-bottom:4px; }
+      .item p, li { color:var(--muted); }
+      ul { margin:0; padding-left:22px; }
+      code { background:#eef1f4; padding:2px 5px; border-radius:3px; }
+      pre { overflow-x:auto; margin:0; padding:18px; background:#111820; color:#e8eef4; border-radius:6px; }
+      .review { border-left-color:var(--amber); }
+      .excluded { border-left-color:var(--red); }
+      a { color:var(--blue); }
+      footer { padding-top:28px; color:var(--muted); font-size:14px; }
+      @media (max-width:720px) { main { width:min(100% - 24px,1040px); padding-top:20px; } .metrics,.grid { grid-template-columns:1fr; } .metric { border-right:0; border-bottom:1px solid var(--line); } .metric:last-child { border-bottom:0; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 010 배포·검증 완료</span>
+        <h1>읽기 전용 웹 뉴스 화면</h1>
+        <p class="lead">LLM Wiki의 날짜별 digest를 검색·필터하고 원문과 판단 근거를 빠르게 탐색하는 공개 서버 렌더링 화면입니다.</p>
+        <div class="actions"><a href="/ai-trend-agent/news">뉴스 화면 열기</a><a href="/ai-trend-agent/news/healthz">Health 확인</a></div>
+      </header>
+      <div class="metrics" aria-label="검증 지표">
+        <div class="metric"><strong>13 / 13</strong><span>하네스 단계</span></div>
+        <div class="metric"><strong>203 passed</strong><span>27개 테스트 파일</span></div>
+        <div class="metric"><strong>2 public</strong><span>news · healthz</span></div>
+        <div class="metric"><strong>0 blockers</strong><span>최종 전체 재검수</span></div>
+      </div>
+      <section><h2>구현 내용</h2><div class="grid">
+        <div class="item"><strong>날짜별 Digest</strong><p>저장된 날짜와 membership을 기준으로 이전·다음 digest와 Top Signals를 조회합니다.</p></div>
+        <div class="item"><strong>검색과 필터</strong><p>query, domain, category, source 조합을 GET URL에 보존하고 결정론적으로 정렬합니다.</p></div>
+        <div class="item"><strong>안전한 SSR</strong><p>DB 문자열을 escape하고 http(s) 원문만 허용하며 빈 결과와 typed 오류를 처리합니다.</p></div>
+        <div class="item"><strong>GCE 운영</strong><p>전용 계정, read-only SQLite snapshot, loopback process와 nginx exact route로 분리했습니다.</p></div>
+      </div></section>
+      <section><h2>운영·보안 경계</h2><ul>
+        <li>뉴스 process는 <code>127.0.0.1:4174</code>에만 bind합니다.</li>
+        <li><code>/var/lib/ai-trend-news/llm-wiki.sqlite</code>를 read-only로 엽니다.</li>
+        <li>Slack webhook과 cron secret을 public process에 전달하지 않습니다.</li>
+        <li>SQLite snapshot은 online backup, integrity check, atomic rename으로 게시합니다.</li>
+        <li><code>/cron</code>은 news service에서 제공하지 않습니다.</li>
+      </ul></section>
+      <section><h2>독립 검수 반영</h2><div class="grid">
+        <div class="item review"><strong>Production DB 경로</strong><p>일반 external-path opt-in과 분리된 news 전용 허용 변수를 적용했습니다.</p></div>
+        <div class="item review"><strong>Network bind</strong><p>localhost 해석 차이를 제거하고 IPv4 loopback만 허용했습니다.</p></div>
+        <div class="item review"><strong>DB publish</strong><p>WAL raw copy와 in-place overwrite 대신 검증된 atomic snapshot을 사용합니다.</p></div>
+        <div class="item review"><strong>Responsive UI</strong><p>desktop/mobile overflow, form, empty/error 화면을 실제 브라우저로 검증했습니다.</p></div>
+      </div></section>
+      <section><h2>검증 결과</h2><pre>npm run typecheck: passed
+npm run build: passed
+npm test: 27 files / 203 tests passed
+git diff --check: passed
+GCE news: HTTP 200
+GCE healthz: HTTP 200</pre></section>
+      <section><h2>의도적으로 제외한 범위</h2><div class="item excluded"><p>로그인, 브라우저 DB 쓰기, feedback/profile 편집, 무한 스크롤, 전문 검색 엔진, SPA framework와 자동 snapshot schedule은 포함하지 않았습니다.</p></div></section>
+      <section><h2>다음 단계</h2><p>Task 010 병합 후 backlog의 wiki lint command와 markdown-style wiki page generator를 별도 task로 확정합니다.</p></section>
+      <section><h2>확인 문서</h2><ul>
+        <li><a href="../../task/010_web_news_view/requirements.md">requirements.md</a></li>
+        <li><a href="../../task/010_web_news_view/phase_status.md">phase_status.md</a></li>
+        <li><a href="../../task/010_web_news_view/validation_report.md">validation_report.md</a></li>
+      </ul></section>
+      <footer>AI Trend Agent · Task 010 Web News View Completion</footer>
+    </main>
+  </body>
+</html>

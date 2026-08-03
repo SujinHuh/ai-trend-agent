@@ -20,12 +20,12 @@ v2 작업을 진행할 때는 아래 문서를 우선 기준으로 본다.
 
 ## 현재 작업
 
-Task 009 PR #12까지 `main`에 병합됐다. 현재 다음 구현 대상은 `010_web_news_view`다.
+Task 009 PR #12까지 `main`에 병합됐다. Task 010 웹 뉴스 화면은 구현·GCE 배포를 마치고 PR review 단계다.
 
 현재와 다음 v2 구현 순서는 다음과 같다.
 
 1. `009_personalization`: Slack/user preference tuning 구현과 병합 완료.
-2. `010_web_news_view`: LLM Wiki news view를 다음으로 진행한다.
+2. `010_web_news_view`: LLM Wiki read-only news view 구현과 공개 배포 완료, merge 대기.
 
 007에서 일부러 제외한 HN/Reddit live polling runner는 `007B_social_live_collectors`에서 구현됐다. X/Threads는 토큰 범위, rate limit, platform policy, app review 확인 전까지 계속 Deferred로 둔다.
 
@@ -93,6 +93,11 @@ LLM 요약/판단은 `007C_llm_digest_intelligence`에서 provider abstraction, 
 - [Task 009 Implementation Sequence](task/009_personalization/implementation-sequence.md)
 - [Task 009 Phase Status](task/009_personalization/phase_status.md)
 - [Task 009 Validation Report](task/009_personalization/validation_report.md)
+- [Task 010 Requirements](task/010_web_news_view/requirements.md)
+- [Task 010 Plan](task/010_web_news_view/plan.md)
+- [Task 010 Implementation Sequence](task/010_web_news_view/implementation-sequence.md)
+- [Task 010 Phase Status](task/010_web_news_view/phase_status.md)
+- [Task 010 Validation Report](task/010_web_news_view/validation_report.md)
 
 완료 확인 산출물:
 
@@ -118,6 +123,8 @@ LLM 요약/판단은 `007C_llm_digest_intelligence`에서 provider abstraction, 
 - [Task 008 Completion HTML](showcase/008_domain_expansion/completion.html)
 - [Task 009 Completion Markdown](showcase/009_personalization/completion.md)
 - [Task 009 Completion HTML](showcase/009_personalization/completion.html)
+- [Task 010 Completion Markdown](showcase/010_web_news_view/completion.md)
+- [Task 010 Completion HTML](showcase/010_web_news_view/completion.html)
 
 외부 확인 URL:
 
@@ -133,6 +140,8 @@ http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completi
 http://34.22.67.160/ai-trend-agent/showcase/007C_llm_digest_intelligence/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion.html
 http://34.22.67.160/ai-trend-agent/showcase/009_personalization/completion.html
+http://34.22.67.160/ai-trend-agent/showcase/010_web_news_view/completion.html
+http://34.22.67.160/ai-trend-agent/news
 ```
 
 ## 작업 흐름 문서

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createLlmWikiStore } from "../src/db/llm-wiki-store.js";
-import { openSqliteDatabase } from "../src/db/sqlite.js";
+import { openReadonlySqliteDatabase, openSqliteDatabase } from "../src/db/sqlite.js";
 import { createTrendIdentity } from "../src/identity/stable-id.js";
 
 function openInitializedStore() {
@@ -13,6 +13,125 @@ function openInitializedStore() {
 }
 
 describe("LlmWikiStore", () => {
+  it("opens an existing wiki in SQLite read-only mode", () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "readonly-wiki-")), "wiki.sqlite");
+    const writable = openSqliteDatabase(dbPath);
+    const writableStore = createLlmWikiStore(writable);
+    writableStore.initialize();
+    writableStore.saveDigest({
+      reportDate: "2026-08-03",
+      generatedAt: "2026-08-02T22:00:00.000Z",
+      trendItemIds: []
+    });
+    writable.close();
+
+    const readonly = openReadonlySqliteDatabase(dbPath);
+    const readonlyStore = createLlmWikiStore(readonly);
+    expect(readonlyStore.listDigestReportDates()).toEqual(["2026-08-03"]);
+    expect(() => readonly.prepare("DELETE FROM digests").run()).toThrow(/readonly/i);
+    readonly.close();
+  });
+
+  it("lists digest dates and reads news entries from digest membership", () => {
+    const { db, store } = openInitializedStore();
+    const assessed = store.saveTrendItem({
+      sourceUrl: "https://example.com/assessed",
+      title: "Assessed release",
+      sourceName: "Example Source",
+      publishedAt: "2026-08-02T23:00:00.000Z"
+    });
+    const unassessed = store.saveTrendItem({
+      sourceUrl: "https://example.com/unassessed",
+      title: "Unassessed release",
+      sourceName: "Example Source",
+      publishedAt: "2026-08-02T22:00:00.000Z"
+    });
+    const outsider = store.saveTrendItem({
+      sourceUrl: "https://example.com/outsider",
+      title: "Not in selected digest",
+      sourceName: "Example Source",
+      publishedAt: "2026-08-01T22:00:00.000Z"
+    });
+    const evidence = store.saveSourceEvidence({
+      trendItemId: assessed.id,
+      sourceUrl: assessed.canonicalUrl,
+      sourceName: assessed.sourceName,
+      fetchedAt: "2026-08-03T00:00:00.000Z",
+      evidenceExcerpt: "Evidence",
+      confidenceScore: 0.91
+    });
+    const assessment = store.saveTrendAssessment({
+      trendItemId: assessed.id,
+      reportDate: "2026-08-03",
+      summary: "A concise summary",
+      whyItMatters: "It changes agent workflows.",
+      practicalImpact: "Review the new API.",
+      trendCategory: "coding_agent",
+      actionLevel: "do_now",
+      confirmationStatus: "official_only",
+      confidence: 0.91,
+      importanceScore: 88,
+      stalenessPolicy: "Recheck in seven days",
+      sourceEvidenceIds: [evidence.id]
+    });
+    const priorEvidence = store.saveSourceEvidence({
+      trendItemId: unassessed.id,
+      sourceUrl: unassessed.canonicalUrl,
+      sourceName: unassessed.sourceName,
+      fetchedAt: "2026-08-02T00:00:00.000Z",
+      evidenceExcerpt: "Prior evidence",
+      confidenceScore: 0.7
+    });
+    store.saveTrendAssessment({
+      trendItemId: unassessed.id,
+      reportDate: "2026-08-02",
+      summary: "Prior-day assessment must not leak",
+      whyItMatters: "Prior day only",
+      practicalImpact: "None for current date",
+      trendCategory: "product",
+      actionLevel: "watch_later",
+      confirmationStatus: "official_only",
+      confidence: 0.7,
+      importanceScore: 60,
+      stalenessPolicy: "Recheck later",
+      sourceEvidenceIds: [priorEvidence.id]
+    });
+    store.saveDigest({
+      reportDate: "2026-08-02",
+      generatedAt: "2026-08-01T22:00:00.000Z",
+      trendItemIds: [outsider.id]
+    });
+    store.saveDigest({
+      reportDate: "2026-08-03",
+      generatedAt: "2026-08-02T22:00:00.000Z",
+      trendItemIds: [unassessed.id, assessed.id]
+    });
+
+    expect(store.listDigestReportDates()).toEqual(["2026-08-03", "2026-08-02"]);
+    expect(store.getNewsDigestSnapshot("2026-08-04")).toBeNull();
+    const currentSnapshot = store.getNewsDigestSnapshot("2026-08-03");
+    expect(JSON.stringify(currentSnapshot)).not.toContain(outsider.id);
+    expect(JSON.stringify(currentSnapshot)).not.toContain("Prior-day assessment must not leak");
+    expect(currentSnapshot).toEqual({
+      digest: expect.objectContaining({ reportDate: "2026-08-03" }),
+      entries: [
+        {
+          position: 1,
+          trendItem: unassessed,
+          assessment: null,
+          lineage: []
+        },
+        {
+          position: 2,
+          trendItem: assessed,
+          assessment,
+          lineage: [expect.objectContaining({ sourceEvidenceId: evidence.id })]
+        }
+      ]
+    });
+    db.close();
+  });
+
   it("stores normalized user profiles and preserves defaults on partial updates", () => {
     const { db, store } = openInitializedStore();
     const created = store.saveUserInterestProfile({
@@ -534,3 +653,6 @@ describe("LlmWikiStore", () => {
     db.close();
   });
 });
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";

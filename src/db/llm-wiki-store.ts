@@ -8,6 +8,7 @@ import type {
   DigestCandidate,
   DigestWithItems,
   LlmUsageLog,
+  NewsDigestSnapshot,
   PersonalizationFeedback,
   PersonalizationFeedbackAction,
   SlackDeliveryAttempt,
@@ -52,6 +53,24 @@ interface DigestRow {
   report_date: string;
   timezone: "Asia/Seoul";
   generated_at: string;
+}
+
+interface NewsDigestItemRow extends TrendItemRow {
+  position: number;
+  assessment_id: string | null;
+  assessment_report_date: string | null;
+  summary: string | null;
+  why_it_matters: string | null;
+  practical_impact: string | null;
+  trend_category: TrendCategory | null;
+  action_level: ActionLevel | null;
+  confirmation_status: ConfirmationStatus | null;
+  confidence: number | null;
+  importance_score: number | null;
+  contradiction_notes: string | null;
+  staleness_policy: string | null;
+  assessment_created_at: string | null;
+  assessment_updated_at: string | null;
 }
 
 interface SourceEvidenceRow {
@@ -416,6 +435,69 @@ export class LlmWikiStore {
       .get(reportDate) as DigestRow | undefined;
 
     return row === undefined ? null : mapDigest(row);
+  }
+
+  listDigestReportDates(): string[] {
+    return this.db
+      .prepare("SELECT report_date FROM digests ORDER BY report_date DESC")
+      .pluck()
+      .all() as string[];
+  }
+
+  getNewsDigestSnapshot(reportDate: string): NewsDigestSnapshot | null {
+    const digest = this.getDigest(reportDate);
+    if (digest === null) {
+      return null;
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            dti.position,
+            t.id,
+            t.canonical_url,
+            t.canonical_hash,
+            t.title,
+            t.source_name,
+            t.published_at,
+            ta.id AS assessment_id,
+            ta.report_date AS assessment_report_date,
+            ta.summary,
+            ta.why_it_matters,
+            ta.practical_impact,
+            ta.trend_category,
+            ta.action_level,
+            ta.confirmation_status,
+            ta.confidence,
+            ta.importance_score,
+            ta.contradiction_notes,
+            ta.staleness_policy,
+            ta.created_at AS assessment_created_at,
+            ta.updated_at AS assessment_updated_at
+          FROM digest_trend_items dti
+          JOIN trend_items t ON t.id = dti.trend_item_id
+          LEFT JOIN trend_assessments ta
+            ON ta.trend_item_id = t.id
+            AND ta.report_date = ?
+          WHERE dti.digest_id = ?
+          ORDER BY dti.position ASC, t.id ASC
+        `
+      )
+      .all(reportDate, digest.id) as NewsDigestItemRow[];
+
+    return {
+      digest,
+      entries: rows.map((row) => {
+        const assessment = mapOptionalNewsAssessment(row);
+        return {
+          position: row.position,
+          trendItem: mapTrendItem(row),
+          assessment,
+          lineage: assessment === null ? [] : this.listTrendAssessmentLineage(assessment.id)
+        };
+      })
+    };
   }
 
   linkDigestTrendItem(input: LinkDigestTrendItemInput): void {
@@ -1620,6 +1702,47 @@ function mapTrendAssessment(row: TrendAssessmentRow): TrendAssessment {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+function mapOptionalNewsAssessment(row: NewsDigestItemRow): TrendAssessment | null {
+  if (row.assessment_id === null) {
+    return null;
+  }
+
+  if (
+    row.assessment_report_date === null ||
+    row.summary === null ||
+    row.why_it_matters === null ||
+    row.practical_impact === null ||
+    row.trend_category === null ||
+    row.action_level === null ||
+    row.confirmation_status === null ||
+    row.confidence === null ||
+    row.importance_score === null ||
+    row.staleness_policy === null ||
+    row.assessment_created_at === null ||
+    row.assessment_updated_at === null
+  ) {
+    throw new Error(`Incomplete TrendAssessment row for news item: ${row.id}`);
+  }
+
+  return mapTrendAssessment({
+    id: row.assessment_id,
+    trend_item_id: row.id,
+    report_date: row.assessment_report_date,
+    summary: row.summary,
+    why_it_matters: row.why_it_matters,
+    practical_impact: row.practical_impact,
+    trend_category: row.trend_category,
+    action_level: row.action_level,
+    confirmation_status: row.confirmation_status,
+    confidence: row.confidence,
+    importance_score: row.importance_score,
+    contradiction_notes: row.contradiction_notes,
+    staleness_policy: row.staleness_policy,
+    created_at: row.assessment_created_at,
+    updated_at: row.assessment_updated_at
+  });
 }
 
 function mapTrendAssessmentLineage(row: TrendAssessmentLineageRow): TrendAssessmentLineage {

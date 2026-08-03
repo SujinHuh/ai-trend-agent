@@ -11,7 +11,7 @@ import type {
   SocialSignalItem
 } from "./domain/types.js";
 import { createLlmWikiStore } from "./db/llm-wiki-store.js";
-import { openSqliteDatabase } from "./db/sqlite.js";
+import { openReadonlySqliteDatabase, openSqliteDatabase } from "./db/sqlite.js";
 import type { DigestIntelligenceProvider } from "./llm/digest-intelligence.js";
 import { resolveProjectPath } from "./security/path-scope.js";
 import type { SourceFetcher } from "./sources/fetch-cache.js";
@@ -33,9 +33,11 @@ import {
   loadSocialSignalSources
 } from "./social/social-source-config.js";
 import { pollSocialSignals } from "./social/live-polling.js";
+import { createNewsHttpServer } from "./web/news-http.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
+const ALLOW_EXTERNAL_NEWS_DB_ENV = "AI_TREND_NEWS_ALLOW_EXTERNAL_DB_PATH";
 
 interface CliOptions {
   dbPath: string;
@@ -55,6 +57,8 @@ interface CliOptions {
   limit: number;
   outPath?: string;
   port: number;
+  host: string;
+  newsPublicBasePath: string;
   userProfileId?: string;
   feedbackAction?: PersonalizationFeedbackAction;
   feedbackEventKey?: string;
@@ -74,6 +78,7 @@ interface CliDependencies {
   llmDigestProvider?: DigestIntelligenceProvider | null;
   fetcher?: SourceFetcher;
   stdout?: (value: string) => void;
+  createNewsServer?: typeof createNewsHttpServer;
 }
 
 async function main(): Promise<void> {
@@ -121,6 +126,9 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
       break;
     case "cron:serve":
       await serveCron(options, dependencies);
+      break;
+    case "news:serve":
+      await serveNews(options, dependencies);
       break;
     case "social:validate":
       validateSocialSources(options);
@@ -718,6 +726,41 @@ async function serveCron(options: CliOptions, dependencies: CliDependencies = {}
   });
 }
 
+async function serveNews(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const resolvedDbPath =
+    env[ALLOW_EXTERNAL_NEWS_DB_ENV] === "true"
+      ? resolve(options.dbPath)
+      : resolveProjectPath(options.dbPath, "SQLite database path", env);
+  const db = openReadonlySqliteDatabase(resolvedDbPath);
+  const store = createLlmWikiStore(db);
+  try {
+    store.listDigestReportDates();
+    const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
+      includeDisabled: true,
+      includeDomainDisabled: true
+    });
+    const server = (dependencies.createNewsServer ?? createNewsHttpServer)({
+      store,
+      sources,
+      publicBasePath: options.newsPublicBasePath
+    });
+    server.on("close", () => db.close());
+
+    await new Promise<void>((resolveListen, rejectListen) => {
+      server.once("error", rejectListen);
+      server.listen(options.port, options.host, () => {
+        server.off("error", rejectListen);
+        (dependencies.stdout ?? console.log)(`AI Trend news server listening at http://${options.host}:${options.port}/news`);
+        resolveListen();
+      });
+    });
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+}
+
 function resolveCronMode(options: CliOptions, env: Record<string, string | undefined>) {
   if (options.dryRun && options.send) {
     throw new Error("Choose only one cron mode: --dry-run or --send");
@@ -871,6 +914,8 @@ function parseOptions(args: string[], env: Record<string, string | undefined> = 
     ...(personalizationUserId === undefined ? {} : { userProfileId: personalizationUserId }),
     enabledDomains: parseEnabledDomains(env.ENABLED_DOMAINS),
     port: 3000,
+    host: parseNewsHost(env.NEWS_HOST ?? "127.0.0.1"),
+    newsPublicBasePath: env.NEWS_PUBLIC_BASE_PATH ?? "/news",
     limit: 5
   };
 
@@ -909,6 +954,10 @@ function parseOptions(args: string[], env: Record<string, string | undefined> = 
       options.outPath = arg.slice("--out=".length);
     } else if (arg.startsWith("--port=")) {
       options.port = parsePositiveInteger(arg.slice("--port=".length), "--port");
+    } else if (arg.startsWith("--host=")) {
+      options.host = parseNewsHost(arg.slice("--host=".length));
+    } else if (arg.startsWith("--public-base-path=")) {
+      options.newsPublicBasePath = arg.slice("--public-base-path=".length);
     } else if (arg.startsWith("--user=")) {
       options.userProfileId = arg.slice("--user=".length);
     } else if (arg.startsWith("--action=")) {
@@ -1090,6 +1139,7 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run profile:get -- --user=ID",
       "  npm run feedback:record -- --user=ID --trend-item=ID --action=interested --event-key=KEY",
       "  npm run personalization:preview -- --user=ID --date=YYYY-MM-DD",
+      "  npm run news:serve -- --db=PATH --port=4174 --public-base-path=/ai-trend-agent/news",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",
@@ -1102,9 +1152,18 @@ function printUsageAndExit(command: string | undefined): never {
       "  --llm-digest       Enable injectable LLM digest enrichment when a provider is configured",
       "  --domains=a,b      Enable source domains: ai, backend, frontend, devops",
       "  --limit=N          Limit candidate output",
-      "  --out=PATH         Output path for wiki:index"
+      "  --out=PATH         Output path for wiki:index",
+      "  --host=HOST        News bind host: 127.0.0.1",
+      "  --public-base-path=PATH Public reverse-proxy path for news links"
     ].join("\n")
   );
+}
+
+function parseNewsHost(value: string): string {
+  if (value !== "127.0.0.1") {
+    throw new Error("--host must be 127.0.0.1");
+  }
+  return value;
 }
 
 const invokedPath = process.argv[1] === undefined ? null : resolve(process.argv[1]);

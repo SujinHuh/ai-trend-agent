@@ -95,4 +95,42 @@ describe("Task 006 deployment assets", () => {
       expect(statSync(path).mode & 0o111).toBeGreaterThan(0);
     }
   });
+
+  it("keeps the public GCE news service isolated and read-only", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    const service = readFileSync("scripts/gce/ai-trend-news.service.template", "utf8");
+    const nginx = readFileSync("scripts/gce/ai-trend-news.nginx.conf", "utf8");
+    const installer = readFileSync("scripts/gce/install-news-service.sh", "utf8");
+
+    expect(packageJson.scripts["start:news:serve"]).toBe("node dist/src/cli.js news:serve");
+    expect(service).toContain("NEWS_HOST=127.0.0.1");
+    expect(service).toContain("NEWS_PUBLIC_BASE_PATH=/ai-trend-agent/news");
+    expect(service).toContain("User=ai-trend-news");
+    expect(service).toContain("WorkingDirectory=/opt/ai-trend-news");
+    expect(service).toContain("LLM_WIKI_DB_PATH=/var/lib/ai-trend-news/llm-wiki.sqlite");
+    expect(service).toContain("AI_TREND_NEWS_ALLOW_EXTERNAL_DB_PATH=true");
+    expect(service).not.toContain("AI_TREND_ALLOW_EXTERNAL_PATHS=true");
+    expect(service).toContain("ProtectHome=true");
+    expect(service).toContain("ReadOnlyPaths=/opt/ai-trend-news /var/lib/ai-trend-news");
+    expect(service).toContain("NoNewPrivileges=true");
+    expect(service).not.toContain("SLACK_WEBHOOK_URL");
+    expect(service).not.toContain("CRON_SECRET");
+    expect(nginx).toContain("location = /ai-trend-agent/news");
+    expect(nginx).toContain("proxy_pass http://127.0.0.1:4174/news$is_args$args");
+    expect(nginx).not.toContain("/cron");
+    expect(installer).toContain("npm run build");
+    expect(installer).toContain('groupadd --system "${SERVICE_GROUP}"');
+    expect(installer).toContain('useradd --system --gid "${SERVICE_GROUP}" --home-dir /nonexistent --shell /usr/sbin/nologin');
+    expect(installer).toContain('sudo -u "${SERVICE_USER}" test -r');
+    expect(installer).toContain("snapshot-wiki.mjs");
+    expect(installer).toContain('published_tmp="${INSTALL_DATA_DIR}/.llm-wiki.$$.sqlite"');
+    expect(installer).toContain('mv -f "${published_tmp}" "${INSTALL_DATA_DIR}/llm-wiki.sqlite"');
+    expect(installer).toContain("systemctl restart ai-trend-news.service");
+    expect(installer).not.toContain('install -o root -g "${SERVICE_GROUP}" -m 0640 "${SOURCE_DB_PATH}"');
+    expect(installer).not.toContain('install -o root -g "${SERVICE_GROUP}" -m 0640 "${snapshot_tmp}" "${INSTALL_DATA_DIR}/llm-wiki.sqlite"');
+    expect(installer).not.toContain("sed \\");
+    expect(statSync("scripts/gce/install-news-service.sh").mode & 0o111).toBeGreaterThan(0);
+  });
 });
