@@ -14,7 +14,7 @@
 | 10 | Tests | Done | Typecheck, focused tests, real public HN/Reddit dry-run, build, diff check, and full suite passed without credentials. |
 | 11 | Validation report | Done | Includes security/policy review. |
 | 12 | Completion showcase | Done | Markdown and HTML created. |
-| 13 | PR and next handoff | Review | PR body draft created; next is 007C or 008. |
+| 13 | PR and next handoff | Review | PR #9 opened; next is 007C or 008. |
 
 ## Progress Log
 
@@ -23,5 +23,5 @@
 - Gate `Done`: confirmed `main` contains Tasks 004-007 and created `feature/007b-social-live-collectors`.
 - Steps 3-7 `In Progress`: started live polling config, HN/Reddit runners, and `social:poll` CLI integration.
 - Steps 3-12 `Done`: implemented live polling, focused tests, validation report, and completion showcase.
-- Step 13 `Review`: PR body draft created; branch push/PR creation remains.
+- Step 13 `Review`: PR #9 opened against `main`.
 - Sub-agent review `Done`: code/security and docs/GCP reviews completed; malformed HN JSON error boundary and GCP URL wording fixed; final post-fix review found no PR blockers.

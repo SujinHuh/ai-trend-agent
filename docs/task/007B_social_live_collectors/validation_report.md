@@ -122,3 +122,9 @@ GCP nginx completion HTML returned HTTP 200 and served Task 007B body
 - Cron integration can call `social:poll` later only after an explicit scheduling policy is chosen.
 - X/Threads live collectors remain deferred.
 - Next task should be `007C_llm_digest_intelligence` or `008_domain_expansion`.
+
+## PR
+
+```text
+https://github.com/SujinHuh/ai-trend-agent/pull/9
+```
