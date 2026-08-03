@@ -198,6 +198,45 @@ describe("CLI", () => {
     expect(expandedResult.sourceResults.map((source) => source.sourceId)).toEqual(["backend-feed", "ai-feed"]);
   }, 30000);
 
+  it("uses injectable env ENABLED_DOMAINS when running CLI commands in-process", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "source-domain-env-cli-"));
+    const dbPath = join(tempDir, "wiki.sqlite");
+    const cacheRoot = join(tempDir, "cache");
+    const configPath = join(tempDir, "sources.json");
+    const reportDate = "2026-08-01";
+    const stdout: string[] = [];
+    writeFileSync(
+      configPath,
+      JSON.stringify([
+        cliSource("ai-feed", "AI Feed", "ai"),
+        cliSource("backend-feed", "Backend Feed", "backend")
+      ])
+    );
+    const cacheDir = join(cacheRoot, reportDate);
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "ai-feed.json"), JSON.stringify(cachedFeed("ai-feed", "AI update")));
+    writeFileSync(join(cacheDir, "backend-feed.json"), JSON.stringify(cachedFeed("backend-feed", "Backend update")));
+
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation((value) => {
+      stdout.push(String(value));
+    });
+    try {
+      await runCliCommand(
+        ["ingest:run", `--config=${configPath}`, `--db=${dbPath}`, `--cache-root=${cacheRoot}`, `--date=${reportDate}`],
+        {
+          env: {
+            ENABLED_DOMAINS: "ai,backend"
+          }
+        }
+      );
+
+      const parsed = JSON.parse(stdout[0] ?? "{}") as { sourceResults: Array<{ sourceId: string }> };
+      expect(parsed.sourceResults.map((source) => source.sourceId)).toEqual(["backend-feed", "ai-feed"]);
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  }, 30000);
+
   it("passes enabled domain filtering into cron dry-run", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "source-domain-cron-cli-"));
     const dbPath = join(tempDir, "wiki.sqlite");

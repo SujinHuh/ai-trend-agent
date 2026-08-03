@@ -18,6 +18,17 @@ describe("renderSlackDigest", () => {
     expect(JSON.stringify(payload)).toContain("Urgent");
   });
 
+  it("keeps the previous all-AI layout without a redundant domain section", () => {
+    const payload = renderSlackDigest({
+      reportDate: "2026-08-01",
+      candidates: [candidate()],
+      limit: 5,
+      sourceDomainsByName: new Map([["Example Source", "ai"]])
+    });
+
+    expect(JSON.stringify(payload)).not.toContain("AI Signals");
+  });
+
   it("uses conservative urgent criteria", () => {
     expect(isUrgentCandidate(candidate())).toBe(true);
     expect(

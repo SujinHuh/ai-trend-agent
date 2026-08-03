@@ -28,8 +28,20 @@ GCP: http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion
 
 - 008 구현 전 검수 요청을 열어두고 source config schema, enabledDomains filtering, ranking weight, Slack section, CLI/cron handoff risk를 점검 대상으로 지정했다.
 
-현재 반영한 주요 risk:
+문서/하네스 최종 검수 결과와 반영:
 
+- High: validation report에 실제 서브 에이전트 검수 결과와 반영 내역이 부족했다. 이 섹션에 severity별 finding, 반영 내용, 재검증 명령을 기록했다.
+- Medium: completion HTML의 진행률이 `10 / 13`으로 validation/GCP 완료 상태와 불일치했다. `13 / 13`과 PR handoff 완료 대상 문구로 수정했다.
+- Medium: GCP 확인 명령만 있고 실제 HTTP status/body 확인 결과가 부족했다. 공개 확인 섹션에 HTTP 200과 body 식별 문자열 확인을 기록했다.
+- Low: source registry 문서의 `enabledDomains`가 source별 기본값처럼 보였다. runtime domain filter 기본값 섹션으로 분리했다.
+
+코드 최종 검수 결과와 반영:
+
+- High: `enabledDomains=ai` 실행에서도 DB에 이미 저장된 backend/frontend/devops item이 ranking/Slack 후보로 재노출될 수 있었다. synthesis 입력과 digest candidate 출력에 allowed source name 필터를 추가하고 cron 회귀 테스트를 추가했다.
+- Medium: metadata에 없는 source가 Slack/ranking에서 `ai`로 fallback되어 필터 누락을 숨길 수 있었다. 후보 선택 전 allowed source name 필터를 적용해 metadata fallback 전에 비활성 도메인 lineage를 제거했다.
+- Medium: `includeDisabled: true` 경로가 disabled source metadata를 ranking/Slack에 다시 줄 수 있었다. digest candidates, wiki, Slack 경로의 source loading을 활성 source 중심으로 정리했다.
+- Low: all-AI Slack digest에도 `AI Signals` heading이 추가되어 기존 payload 형식이 바뀌었다. 단일 domain일 때는 기존 후보 목록 형식을 유지하도록 수정하고 테스트를 추가했다.
+- Low: `runCliCommand`의 injectable env가 `ENABLED_DOMAINS` 파싱에 반영되지 않았다. `parseOptions(args, env)`로 수정하고 in-process CLI 테스트를 추가했다.
 - 기본 AI digest가 깨지지 않도록 `domain` 기본값과 기본 활성 도메인을 `ai`로 유지했다.
 - disabled domain source가 fetch되지 않도록 source loading 단계에서 제외하고 ingest/CLI 테스트로 확인했다.
 - Slack block limit 기존 테스트를 유지하면서 domain section rendering 테스트를 추가했다.
@@ -56,15 +68,16 @@ curl -I http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/complet
 tests/source-config.test.ts: 10 tests passed
 tests/source-ingest.test.ts: 3 tests passed
 tests/trend-ranking.test.ts: 4 tests passed
-tests/slack-renderer.test.ts: 9 tests passed
-tests/cli.test.ts: 18 tests passed
+tests/slack-renderer.test.ts: 10 tests passed
+tests/cli.test.ts: 19 tests passed
+tests/cron-worker.test.ts: 9 tests passed
 ```
 
 전체 테스트:
 
 ```text
 22 files passed
-152 tests passed
+155 tests passed
 ```
 
 ## 제외한 것
@@ -77,5 +90,8 @@ tests/cli.test.ts: 18 tests passed
 GCP 공개 URL에서 HTTP 200과 Task 008 완료 HTML 본문을 확인했다.
 
 ```text
+HTTP/1.1 200 OK
+body includes: Task 008 Domain Expansion Completion
+body line count: 260
 http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/completion.html
 ```

@@ -15,7 +15,7 @@
 - source registry에 `domain` 필드를 추가하고 허용 값 `ai`, `backend`, `frontend`, `devops`를 검증합니다.
 - 기본 활성 도메인은 `ai`로 유지합니다.
 - `--domains=ai,backend` CLI 옵션과 `ENABLED_DOMAINS=ai,backend` 환경 변수를 추가했습니다.
-- disabled domain source가 fetch, ranking, Slack 출력 대상에 들어가지 않도록 source load 단계에서 필터링합니다.
+- disabled domain source가 fetch, ranking, Slack 출력 대상에 들어가지 않도록 source load와 candidate 선택 단계에서 필터링합니다.
 - Backend, Frontend, DevOps 후보 source를 registry와 문서에 추가했습니다.
 - domain별 ranking weight를 적용하되 AI 기본 weight는 `0`으로 유지했습니다.
 - Slack digest를 domain section으로 분리해 렌더링할 수 있게 했습니다.
@@ -46,7 +46,7 @@ npm run build
 통과
 
 npm test
-통과: 22 files / 152 tests
+통과: 22 files / 155 tests
 
 git diff --check
 통과
@@ -59,7 +59,7 @@ curl -I http://34.22.67.160/ai-trend-agent/showcase/008_domain_expansion/complet
 
 - 단위 테스트: source config domain 기본값/검증, ranking weight, Slack section rendering
 - 통합/CLI 테스트: disabled domain fetch 방지, `ingest:run --domains=...`, `cron:run --domains=...`
-- 회귀 테스트: 기존 AI 기본값, Slack block limit, cron dry-run, LLM digest opt-in 경로
+- 회귀 테스트: 기존 AI 기본값, 저장된 disabled-domain 후보 제외, all-AI Slack layout, injectable env, Slack block limit, cron dry-run, LLM digest opt-in 경로
 - 제외 테스트: 신규 Backend/Frontend/DevOps source live network fetch와 실제 Slack webhook 전송
 
 ## 🔗 연관 이슈

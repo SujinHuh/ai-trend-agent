@@ -49,22 +49,7 @@ export function renderSlackDigest(input: RenderSlackDigestInput): SlackWebhookPa
       }
     });
   } else {
-    let position = 1;
-    for (const section of groupCandidatesByDomain(candidates, input.sourceDomainsByName)) {
-      if (blocks.length < MAX_SLACK_BLOCKS) {
-        blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: truncateText(`*${formatDomainLabel(section.domain)}*`, MAX_SECTION_TEXT_LENGTH)
-          }
-        });
-      }
-      for (const candidate of section.candidates) {
-        pushSectionBlock(blocks, renderCandidate(candidate, position));
-        position += 1;
-      }
-    }
+    pushCandidateBlocks(blocks, candidates, input.sourceDomainsByName);
   }
 
   if (blocks.length < MAX_SLACK_BLOCKS) {
@@ -86,6 +71,37 @@ export function renderSlackDigest(input: RenderSlackDigestInput): SlackWebhookPa
     text: `AI Trend Daily Digest - ${input.reportDate}`,
     blocks
   };
+}
+
+function pushCandidateBlocks(
+  blocks: SlackWebhookPayload["blocks"],
+  candidates: DigestCandidate[],
+  sourceDomainsByName: Map<string, SourceDomain> | undefined
+): void {
+  const sections = groupCandidatesByDomain(candidates, sourceDomainsByName);
+  if (sections.length <= 1) {
+    candidates.forEach((candidate, index) => {
+      pushSectionBlock(blocks, renderCandidate(candidate, index + 1));
+    });
+    return;
+  }
+
+  let position = 1;
+  for (const section of sections) {
+    if (blocks.length < MAX_SLACK_BLOCKS) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: truncateText(`*${formatDomainLabel(section.domain)}*`, MAX_SECTION_TEXT_LENGTH)
+        }
+      });
+    }
+    for (const candidate of section.candidates) {
+      pushSectionBlock(blocks, renderCandidate(candidate, position));
+      position += 1;
+    }
+  }
 }
 
 function groupCandidatesByDomain(

@@ -35,10 +35,10 @@ npm run build passed
 npm test -- --run passed
 
 22 test files passed
-152 tests passed
+155 tests passed
 
 focused 008 tests:
-source config, ingest filtering, ranking weight, Slack sections, CLI/cron handoff passed
+source config, ingest filtering, ranking weight, Slack sections, stored disabled-domain filtering, CLI/cron handoff passed
 ```
 
 공개 URL:

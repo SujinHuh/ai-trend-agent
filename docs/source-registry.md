@@ -72,7 +72,6 @@ interface SourceConfig {
 ```json
 {
   "domain": "ai",
-  "enabledDomains": ["ai"],
   "official": true,
   "timezone": "UTC",
   "rateLimit": {
@@ -94,6 +93,14 @@ interface SourceConfig {
 `htmlParserConfig`는 `type="html"`인 source에만 필요하다.
 
 `domain`은 source가 어느 digest 영역에 속하는지 나타낸다. 생략하면 `ai`로 처리한다. 실행 시 기본 활성 도메인은 `ai` 하나이며, `ENABLED_DOMAINS=ai,backend` 또는 CLI `--domains=ai,backend`로 확장한다. 활성 도메인에 없는 source는 `enabled: true`여도 ingest, ranking, Slack digest 입력에서 제외한다.
+
+Runtime domain filter 기본값:
+
+```json
+{
+  "enabledDomains": ["ai"]
+}
+```
 
 초기 허용 도메인:
 

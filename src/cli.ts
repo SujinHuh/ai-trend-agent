@@ -66,7 +66,8 @@ async function main(): Promise<void> {
 
 export async function runCliCommand(argv: string[], dependencies: CliDependencies = {}): Promise<void> {
   const [command, ...args] = argv;
-  const options = parseOptions(args);
+  const env = dependencies.env ?? process.env;
+  const options = parseOptions(args, env);
 
   switch (command) {
     case "db:init":
@@ -409,7 +410,6 @@ function runDigestCandidates(options: CliOptions): void {
   }
 
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true,
     enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
@@ -450,7 +450,6 @@ function queryWiki(options: CliOptions): void {
   }
 
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true,
     enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
@@ -489,7 +488,6 @@ function writeWikiIndex(options: CliOptions): void {
   const outPath = options.outPath ?? "docs/wiki/index.md";
   const reportDate = options.date ?? new Date().toISOString().slice(0, 10);
   const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path"), {
-    includeDisabled: true,
     enabledDomains: options.enabledDomains
   });
   const { db, store } = openStore(options.dbPath);
@@ -540,7 +538,6 @@ async function previewSlack(options: CliOptions, dependencies: CliDependencies =
   try {
     store.initialize();
     const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
-      includeDisabled: true,
       enabledDomains: options.enabledDomains
     });
     const built = await buildSlackDigestAsync({
@@ -584,7 +581,6 @@ async function sendSlack(options: CliOptions, dependencies: CliDependencies = {}
   try {
     store.initialize();
     const sources = loadSourceConfigs(resolveProjectPath(options.sourceConfigPath, "source config path", env), {
-      includeDisabled: true,
       enabledDomains: options.enabledDomains
     });
     const result = await sendSlackDigest({
@@ -729,18 +725,18 @@ function openStore(dbPath: string, env: Record<string, string | undefined> = pro
   return { db, store: createLlmWikiStore(db) };
 }
 
-function parseOptions(args: string[]): CliOptions {
+function parseOptions(args: string[], env: Record<string, string | undefined> = process.env): CliOptions {
   const options: CliOptions = {
-    dbPath: process.env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
-    sourceConfigPath: process.env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
-    socialConfigPath: process.env.SOCIAL_SOURCE_CONFIG_PATH ?? DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
+    dbPath: env.LLM_WIKI_DB_PATH ?? DEFAULT_DB_PATH,
+    sourceConfigPath: env.SOURCE_CONFIG_PATH ?? DEFAULT_SOURCE_CONFIG_PATH,
+    socialConfigPath: env.SOCIAL_SOURCE_CONFIG_PATH ?? DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
     forceRefresh: false,
     forceSend: false,
     dryRun: false,
     send: false,
     force: false,
-    llmDigestIntelligence: process.env.LLM_DIGEST_ENABLED === "true",
-    enabledDomains: parseEnabledDomains(process.env.ENABLED_DOMAINS),
+    llmDigestIntelligence: env.LLM_DIGEST_ENABLED === "true",
+    enabledDomains: parseEnabledDomains(env.ENABLED_DOMAINS),
     port: 3000,
     limit: 5
   };

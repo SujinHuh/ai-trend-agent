@@ -53,7 +53,8 @@ export function buildSlackDigest(input: BuildSlackDigestInput): BuiltSlackDigest
   const candidates = selectDigestCandidates({
     store: input.store,
     reportDate: input.reportDate,
-    limit: input.limit
+    limit: input.limit,
+    allowedSourceNames: createAllowedSourceNames(input.sources)
   });
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
@@ -88,7 +89,8 @@ export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promi
   const candidates = selectDigestCandidates({
     store: input.store,
     reportDate: input.reportDate,
-    limit: input.limit
+    limit: input.limit,
+    allowedSourceNames: createAllowedSourceNames(input.sources)
   });
   const payload = renderSlackDigest({
     reportDate: input.reportDate,
@@ -108,6 +110,10 @@ export async function buildSlackDigestAsync(input: BuildSlackDigestInput): Promi
 
 function createSourceDomainsByName(sources: NormalizedSourceConfig[]): Map<string, SourceDomain> {
   return new Map(sources.map((source) => [source.name, source.domain]));
+}
+
+function createAllowedSourceNames(sources: NormalizedSourceConfig[]): Set<string> {
+  return new Set(sources.map((source) => source.name));
 }
 
 export async function sendSlackDigest(input: SendSlackDigestInput): Promise<SendSlackDigestResult> {
