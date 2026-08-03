@@ -144,13 +144,13 @@
   <body>
     <main>
       <header>
-        <span class="status">Task 007C Verified</span>
-        <h1>LLM Digest Intelligence</h1>
+        <span class="status">Task 007C 검증 완료</span>
+        <h1>LLM 다이제스트 지능화</h1>
         <p>
-          AI Trend Agent v2의 digest 품질 보강 단계입니다. 기본 Slack/cron 경로는
+          AI Trend Agent v2의 다이제스트 품질 보강 단계입니다. 기본 Slack/cron 경로는
           계속 LLM-off로 유지하고, <code>--llm-digest</code> 또는
-          <code>LLM_DIGEST_ENABLED=true</code>가 켜진 injectable provider 경로에서만
-          top candidate를 LLM으로 보강합니다.
+          <code>LLM_DIGEST_ENABLED=true</code>가 켜진 provider 주입 경로에서만
+          상위 후보를 LLM으로 보강합니다.
         </p>
       </header>
 
@@ -171,23 +171,23 @@
           <p>기존 crawler-only Slack/cron 경로는 provider를 호출하지 않습니다.</p>
         </div>
         <div class="card metric">
-          <span>Candidate limit</span>
+          <span>후보 제한</span>
           <strong>5 / 10</strong>
-          <p>기본 5개, 최대 10개 top digest candidate만 prompt에 들어갑니다.</p>
+          <p>기본 5개, 최대 10개 상위 digest 후보만 prompt에 들어갑니다.</p>
         </div>
       </section>
 
       <section class="card">
         <h2>무엇을 만들었나</h2>
         <ul>
-          <li>injectable LLM digest provider interface</li>
-          <li>candidate-only prompt DTO와 secret redaction</li>
-          <li>structured JSON response parser와 candidate ID allow-list</li>
-          <li><code>llm_usage_logs</code> token/cost logging table</li>
-          <li>same-timestamp usage log ID sequence guard</li>
+          <li>LLM 다이제스트 provider 주입 인터페이스</li>
+          <li>후보 전용 prompt DTO와 secret redaction</li>
+          <li>structured JSON 응답 parser와 candidate ID allow-list</li>
+          <li><code>llm_usage_logs</code> token/cost logging 테이블</li>
+          <li>같은 timestamp usage log ID 충돌 방지 sequence guard</li>
           <li>deterministic <code>confirmationStatus</code> 보존 enrichment</li>
-          <li>Slack async handoff for enriched summary, why, impact fields</li>
-          <li><code>--llm-digest</code> / <code>LLM_DIGEST_ENABLED=true</code> opt-in path</li>
+          <li>보강된 summary, why, impact field를 Slack으로 넘기는 async handoff</li>
+          <li><code>--llm-digest</code> / <code>LLM_DIGEST_ENABLED=true</code> opt-in 경로</li>
         </ul>
       </section>
 
@@ -199,14 +199,14 @@ npm run slack:preview -- --date=2026-08-03 --limit=5 --llm-digest
 # 기본 preview/send/cron은 LLM-off
 # --llm-digest는 provider가 주입된 실행 환경에서만 enrichment를 수행</code></pre>
         <p>
-          007C MVP는 real provider SDK를 추가하지 않고 provider abstraction과 injectable
+          007C MVP는 real provider SDK를 추가하지 않고 provider 추상화와 provider 주입
           실행 경로를 제공합니다. 일반 테스트는 외부 LLM 네트워크를 호출하지 않습니다.
         </p>
       </section>
 
       <section class="grid">
         <div class="card">
-          <h2>Validation</h2>
+          <h2>검증</h2>
           <pre><code>git diff --check       passed
 npm run typecheck      passed
 npm run build          passed
@@ -221,13 +221,13 @@ CLI/schema/cron regression tests: 45 passed</code></pre>
         <div class="card">
           <h2>검수 반영</h2>
           <ul>
-            <li>pre-implementation sub-agent review 완료</li>
-            <li>middle implementation review에서 token fallback logging gap 발견</li>
-            <li>post-provider parser/save fallback도 실제 usage를 남기도록 수정</li>
-            <li>daily cap을 기존 same-day usage 기준으로 확인하도록 수정</li>
+            <li>사전 서브 에이전트 검수 완료</li>
+            <li>중간 구현 검수에서 token fallback logging gap 발견</li>
+            <li>provider 응답 이후 parser/save fallback도 실제 usage를 남기도록 수정</li>
+            <li>daily cap을 같은 날짜 기존 usage 기준으로 확인하도록 수정</li>
             <li>CLI/cron opt-in provider wiring 추가</li>
             <li>usage log ID collision guard와 invalid enum rejection 추가</li>
-            <li>post-fix re-review에서 blocking finding 없음 확인</li>
+            <li>보완 후 재검수에서 blocking finding 없음 확인</li>
           </ul>
         </div>
       </section>
@@ -235,9 +235,9 @@ CLI/schema/cron regression tests: 45 passed</code></pre>
       <section class="card">
         <h2>제외한 것</h2>
         <ul>
-          <li>real external LLM provider SDK adapter</li>
+          <li>실제 외부 LLM provider SDK adapter</li>
           <li>multi-model review</li>
-          <li>all-crawled-item summarization</li>
+          <li>전체 수집 item summarization</li>
           <li>Slack interactive personalization</li>
           <li>LLM output의 confirmed 승격 권한</li>
         </ul>
@@ -246,8 +246,8 @@ CLI/schema/cron regression tests: 45 passed</code></pre>
       <section class="card">
         <h2>다음 작업</h2>
         <p>
-          다음 v2 구현 후보는 <strong>Task 008 Domain Expansion</strong>입니다.
-          이후 <strong>Task 009 Personalization</strong>에서 Slack/user preference tuning을 이어갈 수 있습니다.
+          다음 v2 구현 후보는 <strong>Task 008 도메인 확장</strong>입니다.
+          이후 <strong>Task 009 개인화</strong>에서 Slack/user preference tuning을 이어갈 수 있습니다.
         </p>
       </section>
 
