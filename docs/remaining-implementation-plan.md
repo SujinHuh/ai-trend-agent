@@ -29,7 +29,7 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 19 | Threads live collector | 007B social live collectors | Deferred | Social signal agent | Meta API scope, app review, rate limit 확인 후 구현 |
 | 20 | HN/Reddit live polling runner | 007B social live collectors | Done | Social signal agent | opt-in HN Firebase API와 Reddit RSS live polling 구현 |
 | 21 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
-| 22 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
+| 22 | index/query entrypoint | Task 003 + 010 | Done | Validation/UI agent | CLI query/index와 공개 read-only digest news view 구현 |
 | 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
 | 24 | LLM summary provider integration | 007C LLM digest intelligence | Done | Hermes/Ranking agent | Top 5-10 후보 LLM enrichment, provider abstraction, prompt redaction, Slack opt-in handoff 구현 |
 | 25 | LLM token/cost logging | 007C LLM digest intelligence | Done | Ops/Ranking agent | 별도 `llm_usage_logs` 테이블에 input/output tokens, estimated cost 기록 |

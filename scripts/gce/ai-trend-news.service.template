@@ -1,0 +1,32 @@
+[Unit]
+Description=AI Trend Agent read-only news service
+After=network.target
+
+[Service]
+Type=simple
+User=ai-trend-news
+Group=ai-trend-news
+WorkingDirectory=/opt/ai-trend-news
+Environment=NODE_ENV=production
+Environment=LLM_WIKI_DB_PATH=/var/lib/ai-trend-news/llm-wiki.sqlite
+Environment=AI_TREND_NEWS_ALLOW_EXTERNAL_DB_PATH=true
+Environment=SOURCE_CONFIG_PATH=config/sources.ai.official.json
+Environment=NEWS_HOST=127.0.0.1
+Environment=NEWS_PUBLIC_BASE_PATH=/ai-trend-agent/news
+ExecStart=/usr/bin/node /opt/ai-trend-news/dist/src/cli.js news:serve --port=4174
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/ai-trend-news /var/lib/ai-trend-news
+ReadWritePaths=
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -36,6 +36,18 @@ export interface DigestWithItems {
   evidence: SourceEvidence[];
 }
 
+export interface NewsDigestEntry {
+  position: number;
+  trendItem: TrendItem;
+  assessment: TrendAssessment | null;
+  lineage: TrendAssessmentLineage[];
+}
+
+export interface NewsDigestSnapshot {
+  digest: Digest;
+  entries: NewsDigestEntry[];
+}
+
 export type TrendCategory =
   | "model"
   | "coding_agent"

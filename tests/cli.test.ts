@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -39,6 +40,81 @@ async function runCli(command: string, args: string[] = [], env: NodeJS.ProcessE
 }
 
 describe("CLI", () => {
+  it("starts the isolated news service with a read-only wiki and all registry metadata", async () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), "news-cli-")), "wiki.sqlite");
+    const db = openSqliteDatabase(dbPath);
+    const store = createLlmWikiStore(db);
+    store.initialize();
+    store.saveDigest({ reportDate: "2026-08-03", generatedAt: "2026-08-02T22:00:00.000Z", trendItemIds: [] });
+    db.close();
+
+    let server: Server | undefined;
+    let listenArguments: [number, string] | undefined;
+    const createNewsServer = vi.fn((options: { sources: Array<{ domain: string }>; publicBasePath?: string }) => {
+      expect(options.sources.some((source) => source.domain === "backend")).toBe(true);
+      expect(options.sources.some((source) => source.domain === "frontend")).toBe(true);
+      expect(options.sources.some((source) => source.domain === "devops")).toBe(true);
+      expect(options.publicBasePath).toBe("/ai-trend-agent/news");
+      let closeListener: (() => void) | undefined;
+      server = {
+        on: (event: string, listener: () => void) => {
+          if (event === "close") closeListener = listener;
+          return server;
+        },
+        once: () => server,
+        off: () => server,
+        listen: (_port: number, _host: string, callback: () => void) => {
+          listenArguments = [_port, _host];
+          callback();
+          return server;
+        },
+        close: (callback?: (error?: Error) => void) => {
+          closeListener?.();
+          callback?.();
+          return server;
+        }
+      } as unknown as Server;
+      return server;
+    });
+    const stdout: string[] = [];
+
+    delete process.env.AI_TREND_ALLOW_EXTERNAL_PATHS;
+    try {
+      await runCliCommand(
+        [
+          "news:serve",
+          `--db=${dbPath}`,
+          "--config=config/sources.ai.official.json",
+          "--port=4174",
+          "--host=127.0.0.1",
+          "--public-base-path=/ai-trend-agent/news"
+        ],
+        {
+          env: { AI_TREND_NEWS_ALLOW_EXTERNAL_DB_PATH: "true" },
+          createNewsServer: createNewsServer as never,
+          stdout: (value) => stdout.push(value)
+        }
+      );
+    } finally {
+      process.env.AI_TREND_ALLOW_EXTERNAL_PATHS = "true";
+    }
+
+    expect(createNewsServer).toHaveBeenCalledOnce();
+    expect(listenArguments).toEqual([4174, "127.0.0.1"]);
+    expect(stdout[0]).toContain("http://127.0.0.1:4174/news");
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
+  });
+
+  it("rejects public news bind hosts", async () => {
+    await expect(runCliCommand(["news:serve", "--host=0.0.0.0"])).rejects.toThrow(/127\.0\.0\.1/);
+    await expect(runCliCommand(["news:serve", "--host=localhost"])).rejects.toThrow(/127\.0\.0\.1/);
+  });
+
+  it("keeps zero ports invalid for existing server commands", async () => {
+    await expect(runCliCommand(["cron:serve", "--port=0"])).rejects.toThrow(/positive integer/);
+    await expect(runCliCommand(["news:serve", "--port=0"])).rejects.toThrow(/positive integer/);
+  });
+
   it("updates profiles, records idempotent feedback, and previews personalization", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "personalization-cli-")), "wiki.sqlite");
     const db = openSqliteDatabase(dbPath);
