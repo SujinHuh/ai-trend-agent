@@ -16,6 +16,14 @@
       "maxRequestsPerWindow": 1,
       "windowSeconds": 60
     },
+    "livePolling": {
+      "pollingIntervalMinutes": 1440,
+      "cacheTtlMinutes": 1440,
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "retryCount": 0,
+      "backoffMs": 0
+    },
     "security": {
       "requiresToken": false
     },
@@ -38,6 +46,14 @@
     "rateLimit": {
       "maxRequestsPerWindow": 60,
       "windowSeconds": 60
+    },
+    "livePolling": {
+      "pollingIntervalMinutes": 60,
+      "cacheTtlMinutes": 30,
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 30,
+      "retryCount": 0,
+      "backoffMs": 0
     },
     "security": {
       "requiresToken": false
@@ -62,6 +78,14 @@
       "maxRequestsPerWindow": 12,
       "windowSeconds": 60
     },
+    "livePolling": {
+      "pollingIntervalMinutes": 60,
+      "cacheTtlMinutes": 30,
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 25,
+      "retryCount": 0,
+      "backoffMs": 0
+    },
     "security": {
       "requiresToken": false
     },
@@ -84,6 +108,14 @@
     "rateLimit": {
       "maxRequestsPerWindow": 1,
       "windowSeconds": 60
+    },
+    "livePolling": {
+      "pollingIntervalMinutes": 1440,
+      "cacheTtlMinutes": 1440,
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "retryCount": 0,
+      "backoffMs": 0
     },
     "security": {
       "requiresToken": true,
@@ -108,6 +140,14 @@
     "rateLimit": {
       "maxRequestsPerWindow": 1,
       "windowSeconds": 60
+    },
+    "livePolling": {
+      "pollingIntervalMinutes": 1440,
+      "cacheTtlMinutes": 1440,
+      "timeoutMs": 5000,
+      "maxItemsPerFetch": 10,
+      "retryCount": 0,
+      "backoffMs": 0
     },
     "security": {
       "requiresToken": true,

@@ -57,6 +57,14 @@ function source() {
     keywords: ["ai"],
     officialDomainsToConfirm: ["openai.com"],
     rateLimit: { maxRequestsPerWindow: 1, windowSeconds: 60 },
+    livePolling: {
+      pollingIntervalMinutes: 60,
+      cacheTtlMinutes: 30,
+      timeoutMs: 5000,
+      maxItemsPerFetch: 10,
+      retryCount: 0,
+      backoffMs: 0
+    },
     security: { requiresToken: false },
     policyReviewedAt: "2026-08-02",
     policyNotes: "public links only"

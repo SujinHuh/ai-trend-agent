@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 007B Social Live Collectors Completion</title>
+    <style>
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17202a;
+        background: #f6f8fb;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 48px 20px;
+      }
+      .hero {
+        padding: 28px 0 24px;
+        border-bottom: 1px solid #d9e1ec;
+      }
+      h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+      p {
+        line-height: 1.65;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        padding: 18px;
+      }
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+      pre {
+        overflow: auto;
+        background: #101820;
+        color: #eef6ff;
+        border-radius: 8px;
+        padding: 16px;
+      }
+      li {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Task 007B Social Live Collectors</h1>
+        <p>
+          HN/Reddit public endpoint를 opt-in live polling으로 수집하되,
+          social-only 신호는 계속 <code>needs_confirmation</code>으로 유지하는 007 후속 확장을 구현했습니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Built</h2>
+          <ul>
+            <li>source-level <code>livePolling</code> config contract</li>
+            <li>Hacker News Firebase API live polling</li>
+            <li>Reddit subreddit RSS live polling</li>
+            <li>shared timeout, cache TTL, retry, backoff controls</li>
+            <li><code>social:poll</code> CLI and dry-run mode</li>
+            <li>official SourceEvidence URL matching handoff</li>
+            <li>source-level malformed HN JSON error handling</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Safety</h2>
+          <ul>
+            <li>default social sources remain disabled</li>
+            <li>disabled sources do not fetch</li>
+            <li>dry-run normalizes without persistence</li>
+            <li>social-only signals stay <code>needs_confirmation</code></li>
+            <li>X/Threads live collectors remain deferred</li>
+            <li><code>pollingIntervalMinutes</code> is scheduling metadata for later cron integration</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>npm run typecheck passed
+npm run social:validate passed: 5 sources, 0 enabled
+npm run social:poll -- --date=2026-08-03 --dry-run passed: 0 polled, 0 saved
+real public HN/Reddit dry-run passed: 2 polled, 0 saved
+focused tests passed: 4 files, 27 tests
+post-review focused tests passed: 3 files, 23 tests
+git diff --check passed
+npm run build passed
+full test suite passed: 21 files, 133 tests
+GCP public completion HTML passed: HTTP 200</code></pre>
+        </div>
+        <div class="card">
+          <h2>Sub-Agent Review</h2>
+          <ul>
+            <li>code/security review completed</li>
+            <li>docs/GCP review completed</li>
+            <li>malformed HN JSON issue fixed and tested</li>
+            <li>GCP public URL is the user-facing confirmation link</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Public URL</h2>
+        <pre><code>http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html</code></pre>
+      </section>
+
+      <section class="card">
+        <h2>Next</h2>
+        <p>After Task 007B, choose between <code>007C_llm_digest_intelligence</code> and <code>008_domain_expansion</code>.</p>
+      </section>
+    </main>
+  </body>
+</html>

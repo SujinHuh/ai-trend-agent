@@ -16,6 +16,28 @@
 6. 로컬 또는 GCP 공개 경로에서 HTML이 열리는지 확인한다.
 7. 실제 확인 URL과 검증 결과를 `docs/logs/YYYY-MM-DD.md`에 기록한다.
 
+## HTML 형식 기준
+
+새 completion HTML은 기존 v2 completion HTML 형식을 따른다.
+
+기준 파일:
+
+```text
+docs/showcase/006_gcp_deployment/completion.html
+docs/showcase/007_social_allow_list/completion.html
+```
+
+일관성 규칙:
+
+- `<html lang="ko">`를 사용한다.
+- `main` 폭은 `1040px`, padding은 `48px 20px` 계열을 따른다.
+- 첫 영역은 `.hero` 섹션으로 두고, `h1`과 한 문단 요약을 둔다.
+- 주요 내용은 `.grid`와 `.card` 조합으로 배치한다.
+- card radius는 기존처럼 `8px` 이하로 유지한다.
+- 검증 명령은 어두운 `pre code` 블록으로 표시한다.
+- 사용자 확인 링크는 GCP 공개 URL을 우선 표기한다.
+- localhost URL은 내부 확인용으로만 쓰고, 최종 사용자-facing 링크로 쓰지 않는다.
+
 ## 파일 경로
 
 ```text

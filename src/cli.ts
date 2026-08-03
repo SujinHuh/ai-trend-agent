@@ -21,6 +21,7 @@ import {
   DEFAULT_SOCIAL_SOURCE_CONFIG_PATH,
   loadSocialSignalSources
 } from "./social/social-source-config.js";
+import { pollSocialSignals } from "./social/live-polling.js";
 
 const DEFAULT_DB_PATH = "data/llm-wiki.sqlite";
 const DEFAULT_SAMPLE_DATE = "2026-07-29";
@@ -104,6 +105,9 @@ export async function runCliCommand(argv: string[], dependencies: CliDependencie
     case "social:list":
       listSocialSignals(options);
       break;
+    case "social:poll":
+      await pollSocial(options, dependencies);
+      break;
     default:
       printUsageAndExit(command);
   }
@@ -183,6 +187,50 @@ function listSocialSignals(options: CliOptions): void {
         {
           itemCount: items.length,
           items: items.map(formatSocialSignalItem)
+        },
+        null,
+        2
+      )
+    );
+  } finally {
+    db.close();
+  }
+}
+
+async function pollSocial(options: CliOptions, dependencies: CliDependencies = {}): Promise<void> {
+  if (options.date === undefined) {
+    throw new Error("Missing required option: --date=YYYY-MM-DD");
+  }
+
+  const env = dependencies.env ?? process.env;
+  const sources = loadSocialSignalSources(resolveProjectPath(options.socialConfigPath, "social source config path", env));
+  const selectedSources =
+    options.socialSourceId === undefined ? sources : sources.filter((source) => source.id === options.socialSourceId);
+  if (options.socialSourceId !== undefined && selectedSources.length === 0) {
+    throw new Error(`Unknown or disabled social source id: ${options.socialSourceId}`);
+  }
+  const { db, store } = openStore(options.dbPath, env);
+
+  try {
+    store.initialize();
+    const result = await pollSocialSignals({
+      store,
+      sources: selectedSources,
+      reportDate: options.date,
+      dryRun: options.dryRun,
+      forceRefresh: options.forceRefresh,
+      ...(options.cacheRoot === undefined ? {} : { cacheRoot: resolveProjectPath(options.cacheRoot, "cache root", env) }),
+      ...(dependencies.fetcher === undefined ? {} : { fetcher: dependencies.fetcher })
+    });
+
+    (dependencies.stdout ?? console.log)(
+      JSON.stringify(
+        {
+          ...result,
+          results: result.results.map((sourceResult) => ({
+            ...sourceResult,
+            items: sourceResult.items.map(formatSocialSignalItem)
+          }))
         },
         null,
         2
@@ -819,6 +867,7 @@ function printUsageAndExit(command: string | undefined): never {
       "  npm run social:validate",
       "  npm run social:import -- --source-id=manual-public-ai-links --input=PATH",
       "  npm run social:list",
+      "  npm run social:poll -- --date=YYYY-MM-DD --dry-run",
       "Options:",
       "  --db=PATH          Override the SQLite database path",
       "  --config=PATH      Override the source registry config path",

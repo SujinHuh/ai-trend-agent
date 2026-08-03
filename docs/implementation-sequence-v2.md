@@ -504,3 +504,26 @@ Task 007 GCP nginx 공개 URL:
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/007_social_allow_list/completion.html
 ```
+
+Task 007B 완료 확인 산출물:
+
+- [docs/showcase/007B_social_live_collectors/completion.md](showcase/007B_social_live_collectors/completion.md)
+- [docs/showcase/007B_social_live_collectors/completion.html](showcase/007B_social_live_collectors/completion.html)
+
+Task 007B 로컬 확인 URL:
+
+```text
+http://127.0.0.1:4173/showcase/007B_social_live_collectors/completion.html
+```
+
+Task 007B 직접 확인 파일:
+
+```text
+/home/sujin941220/Playground/ai-trend-agent/docs/showcase/007B_social_live_collectors/completion.html
+```
+
+Task 007B GCP nginx 공개 URL:
+
+```text
+http://34.22.67.160/ai-trend-agent/showcase/007B_social_live_collectors/completion.html
+```
