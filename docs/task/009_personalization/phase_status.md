@@ -14,7 +14,7 @@
 | 10 | Validation | Done | typecheck, build, 23 files / 166 tests, diff check 통과. |
 | 11 | Independent review | Done | 세 차례 검수와 지적 반영 후 blocker 0 확인. |
 | 12 | Completion showcase | Done | Korean Markdown/HTML 생성, GCP HTTP 200과 Task 009 본문 확인. |
-| 13 | PR and handoff | In Progress | Korean template 작성, push와 PR state 확인 진행. |
+| 13 | PR and handoff | Done | PR #12 Open, non-Draft, base main, Korean template body 확인. |
 
 ## Gate
 
