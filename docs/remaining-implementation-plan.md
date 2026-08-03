@@ -8,18 +8,18 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 
 | No. | Item | Target task | Status | Owner role | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | LLM 요약 생성 `summary` | Task 003 | Pending | Ranking agent | 원문 title/excerpt/source evidence를 바탕으로 짧은 요약 생성 |
-| 2 | `whyItMatters` | Task 003 | Pending | Ranking agent | 솔로 개발자 관점에서 왜 중요한지 설명 |
-| 3 | `practicalImpact` | Task 003 | Pending | Ranking agent | 코드, 도구 선택, 비용, 학습, 제품 판단에 주는 영향 |
-| 4 | `trendCategory` | Task 003 | Pending | Ranking agent | model, product, coding-agent, open-source, benchmark, safety, infra 등 |
-| 5 | `actionLevel` | Task 003 | Pending | Ranking agent | `do_now`, `do_next`, `watch_later`, `needs_confirmation` |
-| 6 | `confidence` | Task 003 | Pending | Ranking agent | 공식 출처, 교차 확인, 날짜/원문 품질 기반 |
-| 7 | `importanceScore` | Task 003 | Pending | Ranking agent | daily digest 정렬 기준 |
-| 8 | `sourceLineage` | Task 003 | Pending | Ranking agent | official source와 trusted/social signal 연결 |
-| 9 | `confirmationStatus` | Task 003 | Pending | Ranking agent | `confirmed`, `needs_confirmation`, `disputed`, `discarded` |
-| 10 | `contradictionNotes` | Task 003 | Pending | Ranking agent | 기존 item/digest와 충돌하는 주장 기록 |
-| 11 | `stalenessPolicy` | Task 003 | Pending | Ranking agent | 재확인 날짜 또는 만료 기준 |
-| 12 | daily digest candidate CLI | Task 003 | Pending | Ranking agent | `npm run digest:candidates -- --date=YYYY-MM-DD` |
+| 1 | LLM 요약 생성 `summary` | Task 003 + 007C | Done | Ranking agent | Task 003 deterministic summary, Task 007C opt-in LLM enrichment 구현 |
+| 2 | `whyItMatters` | Task 003 + 007C | Done | Ranking agent | Task 003 deterministic field, Task 007C opt-in LLM enrichment 구현 |
+| 3 | `practicalImpact` | Task 003 + 007C | Done | Ranking agent | Task 003 deterministic field, Task 007C opt-in LLM enrichment 구현 |
+| 4 | `trendCategory` | Task 003 | Done | Ranking agent | model, product, coding-agent, open-source, benchmark, safety, infra 등 |
+| 5 | `actionLevel` | Task 003 + 007C | Done | Ranking agent | deterministic trust gate 유지, 007C LLM action judgment는 trust gate 통과 |
+| 6 | `confidence` | Task 003 | Done | Ranking agent | 공식 출처, 교차 확인, 날짜/원문 품질 기반 |
+| 7 | `importanceScore` | Task 003 + 007C | Done | Ranking agent | deterministic ranking + 007C opt-in LLM enrichment score clamp |
+| 8 | `sourceLineage` | Task 003 + 007B | Done | Ranking agent | official SourceEvidence lineage와 social signal matching handoff 구현 |
+| 9 | `confirmationStatus` | Task 003 + 007C | Done | Ranking agent | deterministic confirmation policy 구현; 007C LLM output은 승격 불가 |
+| 10 | `contradictionNotes` | Task 003 | Done | Ranking agent | field와 persistence 구현 |
+| 11 | `stalenessPolicy` | Task 003 | Done | Ranking agent | 재확인 날짜 기준 구현 |
+| 12 | daily digest candidate CLI | Task 003 | Done | Ranking agent | `npm run digest:candidates -- --date=YYYY-MM-DD` |
 | 13 | trusted individual registry | Task 007 | Done | Social signal agent | disabled-by-default social registry로 구현 |
 | 14 | official org social registry | Task 007 | Done | Social signal agent | `official_social` credibility와 official domain matching 정책으로 구현 |
 | 15 | community source registry | Task 007 | Done | Social signal agent | Reddit/HN/manual 후보를 disabled config로 구현 |
@@ -27,13 +27,13 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 | 17 | official-source cross-confirmation | Task 007 | Done | Ranking + Social signal agents | canonical outbound URL과 existing SourceEvidence 매칭 구현 |
 | 18 | X live collector | 007B social live collectors | Deferred | Social signal agent | X API token scope, rate limit, billing/policy 확인 후 구현 |
 | 19 | Threads live collector | 007B social live collectors | Deferred | Social signal agent | Meta API scope, app review, rate limit 확인 후 구현 |
-| 20 | HN/Reddit live polling runner | 007B social live collectors | Deferred | Social signal agent | live polling 주기, cache, policyReviewedAt, rate limit 확인 후 구현 |
+| 20 | HN/Reddit live polling runner | 007B social live collectors | Review | Social signal agent | PR #9에서 opt-in HN Firebase API와 Reddit RSS live polling 구현 |
 | 21 | wiki lint command | Later lint task | Pending | Validation agent | stale claim, contradiction, orphan tag, broken source 점검 |
 | 22 | index/query entrypoint | Task 003 or web task | Pending | Validation/UI agent | DB/wiki 탐색 시작점 |
 | 23 | markdown-style wiki page generator | Later wiki task | Pending | Wiki agent | Obsidian-style page 생성은 MVP 이후 |
-| 24 | LLM summary provider integration | 007C LLM digest intelligence | Pending | Hermes/Ranking agent | Top 5-10 후보에만 LLM 요약, 중요도 판단, why/practicalImpact 생성 |
-| 25 | LLM token/cost logging | 007C LLM digest intelligence | Pending | Ops/Ranking agent | `cron_runs` 또는 별도 테이블에 input/output tokens, estimated cost 기록 |
-| 26 | user interest reranking | 007C LLM digest intelligence or Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
+| 24 | LLM summary provider integration | 007C LLM digest intelligence | Review | Hermes/Ranking agent | Top 5-10 후보 LLM enrichment, provider abstraction, prompt redaction, Slack opt-in handoff 구현 |
+| 25 | LLM token/cost logging | 007C LLM digest intelligence | Review | Ops/Ranking agent | 별도 `llm_usage_logs` 테이블에 input/output tokens, estimated cost 기록 |
+| 26 | user interest reranking | Task 009 | Pending | Personalization agent | 관심 태그, Slack feedback, muted tags 기반 재정렬 |
 
 ## 진행 원칙
 
@@ -41,9 +41,9 @@ Karpathy LLM Wiki 참고 이후 아직 구현하지 않은 항목을 번호별�
 2. Task 007은 social/trusted source 수집 MVP를 구현한다.
 3. Lint는 Task 003에서 최소 정책을 남기고, command 구현은 별도 later lint task로 분리한다.
 4. X/Threads/Reddit/HN 신호는 공식 출처로 확인되기 전까지 `needs_confirmation`이다.
-5. X/Threads live collector와 HN/Reddit live polling runner는 007 완료 조건이 아니라 007B 후속 확장이다.
+5. X/Threads live collector는 policy/token review 전까지 Deferred이고, HN/Reddit live polling runner는 007B PR review 상태다.
 6. 크롤링, 저장, Slack 발송만으로는 LLM token 비용이 발생하지 않는다.
-7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석, 개인 관심사 기반 재정렬은 LLM token을 사용하는 별도 구현 범위다.
+7. 사용자가 읽을 요약, 중요도 판단, 왜 중요한지 분석은 007C PR review 상태이고, 개인 관심사 기반 재정렬은 Task 009 범위다.
 8. LLM 적용은 전체 수집 결과가 아니라 deterministic ranking 상위 5-10개 후보부터 시작한다.
 
 ## Task 003 최소 Done Criteria

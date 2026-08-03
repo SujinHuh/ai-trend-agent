@@ -144,6 +144,22 @@ export interface CronRun {
   errorMessage: string | null;
 }
 
+export interface LlmUsageLog {
+  id: string;
+  reportDate: string;
+  purpose: "digest_intelligence";
+  providerName: string;
+  modelName: string;
+  candidateCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  status: "success" | "fallback";
+  errorMessage: string | null;
+  createdAt: string;
+}
+
 export type SocialPlatform = "x" | "threads" | "reddit" | "hacker_news" | "newsletter" | "manual";
 export type SocialCredibility = "trusted_individual" | "official_social" | "community";
 export type SocialCollectionMethod = "api" | "rss" | "manual_export" | "html_if_allowed";

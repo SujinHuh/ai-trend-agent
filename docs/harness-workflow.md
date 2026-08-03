@@ -133,6 +133,8 @@ docs/task/005_hermes_cron/
 
 v2 task에서는 위 루프를 수동 기억에 의존하지 않고 [v2 Task Harness](v2-task-harness.md)의 gate, verify, showcase, PR, merge check로 확인한다.
 
+PR을 열거나 수정할 때는 기억으로 작성하지 않는다. 반드시 `.github/PULL_REQUEST_TEMPLATE.md`와 `docs/pr-template.md`를 먼저 확인하고, 그 템플릿의 제목, 섹션, 체크박스, 이모지 포맷을 유지한 한글 PR 본문을 `docs/pr/<NNN_task_slug>.md`에 작성한 뒤 GitHub PR 본문에 반영한다.
+
 ## 5.1 하위 번호별 구현-검수 루프
 
 task가 `implementation-sequence.md` 또는 `phase_status.md`에 1번부터 끝번호까지 하위 단계를 가지고 있으면, 각 하위 단계는 아래 루프를 따른다.
@@ -151,6 +153,8 @@ Step N Pending
 원칙:
 
 - 모든 step은 로컬 검증과 완료 기록이 필요하다.
+- 기능 동작, 저장소, parser, ranking, LLM, Slack, cron, public output을 바꾸는 step은 구현과 같은 단계에서 테스트 코드를 작성한다. 나중에 몰아서 작성하는 방식으로 `Done` 처리하지 않는다.
+- 각 step의 테스트 범위는 변경 성격에 맞춘다. 순수 함수나 parser는 단위 테스트, DB/CLI/cron/Slack 연결은 통합 또는 회귀 테스트, 기존 동작 보존은 regression test로 기록한다.
 - 리스크가 있는 구현 step은 서브 에이전트 검수 필수다. 여기서 리스크가 있는 구현 step은 schema, parser, ingestion, external API, storage, ranking, LLM, Slack, cron, deployment, security, credentials, rate limit, legal boundary, public output, future scope docs를 바꾸는 step이다.
 - 단순 CLI wiring, 작은 문서 링크 수정, PR URL 기록, phase status 한 줄 갱신처럼 위험도가 낮은 step은 묶어서 검수하거나 최종 전체 검수로 처리할 수 있다.
 - 서브 에이전트 검수가 필요한 step은 검수가 끝나기 전에는 `Done`으로 넘기지 않는다.
@@ -159,6 +163,15 @@ Step N Pending
 - 서브 에이전트 지적이 있으면 수정 내용과 재검증 명령을 `validation_report.md`와 `docs/logs/YYYY-MM-DD.md`에 남긴다.
 - 모든 task는 PR 전 최종 전체 서브 에이전트 검수를 반드시 거친다.
 - 검수 증거가 필요한 step에 증거가 없으면 완료된 것으로 주장하지 않는다.
+
+PR handoff step 원칙:
+
+- PR 문서 작성 전 `.github/PULL_REQUEST_TEMPLATE.md`와 `docs/pr-template.md`를 다시 연다.
+- PR 문서는 템플릿의 `# 📝 PR Template`, `## 📌 변경 사항`, `## 🔍 변경 내용 요약`, `## ❓ 변경 이유`, `## 🛠 테스트 및 검증`, `## 🔗 연관 이슈`, `## 💡 추가 설명`, `## 👀 리뷰 요청` 형식을 유지한다.
+- 사용자가 별도로 요청하지 않는 한 PR 제목과 본문 설명은 한글로 작성한다.
+- 코드 식별자, 파일 경로, 명령어, enum, API 이름처럼 원문 보존이 필요한 값만 영어 그대로 둔다.
+- 단위 테스트, 통합 테스트, 회귀 테스트, 제외한 테스트 범위를 PR 본문에 분리해서 기록한다.
+- GitHub PR 생성 후에도 `gh pr view`로 실제 PR 본문이 템플릿 형식과 같은지 확인한다.
 
 ## 6. 오류 처리 루프
 

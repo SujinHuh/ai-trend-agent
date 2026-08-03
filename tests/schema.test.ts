@@ -222,7 +222,9 @@ describe("SQLite schema", () => {
               'idx_slack_delivery_attempts_report_date',
               'idx_slack_delivery_attempts_sent_at',
               'idx_social_signal_items_source_id',
-              'idx_social_signal_items_confirmation_status'
+              'idx_social_signal_items_confirmation_status',
+              'idx_llm_usage_logs_report_date',
+              'idx_llm_usage_logs_created_at'
             )
           ORDER BY name
         `
@@ -233,6 +235,8 @@ describe("SQLite schema", () => {
     expect(indexes).toEqual([
       "idx_digest_trend_items_trend_item_id",
       "idx_digests_report_date",
+      "idx_llm_usage_logs_created_at",
+      "idx_llm_usage_logs_report_date",
       "idx_slack_delivery_attempts_duplicate_guard",
       "idx_slack_delivery_attempts_report_date",
       "idx_slack_delivery_attempts_sent_at",
@@ -244,7 +248,7 @@ describe("SQLite schema", () => {
       "idx_trend_assessments_report_date",
       "idx_trend_assessments_score"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    expect(db.pragma("user_version", { simple: true })).toBe(7);
     db.close();
   });
 
@@ -284,7 +288,16 @@ describe("SQLite schema", () => {
           SELECT name
           FROM sqlite_master
           WHERE type = 'table'
-            AND name IN ('trend_items', 'source_evidence', 'trend_assessments', 'trend_assessment_lineage', 'slack_delivery_attempts', 'cron_runs', 'social_signal_items')
+            AND name IN (
+              'trend_items',
+              'source_evidence',
+              'trend_assessments',
+              'trend_assessment_lineage',
+              'slack_delivery_attempts',
+              'cron_runs',
+              'social_signal_items',
+              'llm_usage_logs'
+            )
           ORDER BY name
         `
       )
@@ -293,6 +306,7 @@ describe("SQLite schema", () => {
 
     expect(tables).toEqual([
       "cron_runs",
+      "llm_usage_logs",
       "slack_delivery_attempts",
       "social_signal_items",
       "source_evidence",
@@ -300,7 +314,7 @@ describe("SQLite schema", () => {
       "trend_assessments",
       "trend_items"
     ]);
-    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    expect(db.pragma("user_version", { simple: true })).toBe(7);
     db.close();
   });
 

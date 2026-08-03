@@ -11,6 +11,9 @@ export function initializeSchema(db: SqliteDatabase): void {
   if (sqliteObjectExists(db, "table", "social_signal_items")) {
     assertSocialSignalItemsSchema(db);
   }
+  if (sqliteObjectExists(db, "table", "llm_usage_logs")) {
+    assertLlmUsageLogsSchema(db);
+  }
   try {
     db.exec(`
     CREATE TABLE IF NOT EXISTS trend_items (
@@ -159,6 +162,22 @@ export function initializeSchema(db: SqliteDatabase): void {
 	      UNIQUE (source_id, canonical_url)
 	    );
 
+	    CREATE TABLE IF NOT EXISTS llm_usage_logs (
+	      id TEXT PRIMARY KEY,
+	      report_date TEXT NOT NULL,
+	      purpose TEXT NOT NULL CHECK (purpose IN ('digest_intelligence')),
+	      provider_name TEXT NOT NULL,
+	      model_name TEXT NOT NULL,
+	      candidate_count INTEGER NOT NULL CHECK (candidate_count >= 0),
+	      input_tokens INTEGER NOT NULL CHECK (input_tokens >= 0),
+	      output_tokens INTEGER NOT NULL CHECK (output_tokens >= 0),
+	      total_tokens INTEGER NOT NULL CHECK (total_tokens >= 0),
+	      estimated_cost_usd REAL NOT NULL CHECK (estimated_cost_usd >= 0),
+	      status TEXT NOT NULL CHECK (status IN ('success', 'fallback')),
+	      error_message TEXT,
+	      created_at TEXT NOT NULL
+	    );
+
     CREATE INDEX IF NOT EXISTS idx_digests_report_date ON digests(report_date);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_trend_item_id ON source_evidence(trend_item_id);
     CREATE INDEX IF NOT EXISTS idx_source_evidence_fetched_at ON source_evidence(fetched_at);
@@ -185,6 +204,8 @@ export function initializeSchema(db: SqliteDatabase): void {
 	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_platform ON social_signal_items(platform);
 	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_confirmation_status ON social_signal_items(confirmation_status);
 	    CREATE INDEX IF NOT EXISTS idx_social_signal_items_published_at ON social_signal_items(published_at);
+	    CREATE INDEX IF NOT EXISTS idx_llm_usage_logs_report_date ON llm_usage_logs(report_date);
+	    CREATE INDEX IF NOT EXISTS idx_llm_usage_logs_created_at ON llm_usage_logs(created_at);
 	    `);
   } catch (error) {
     throwSlackSchemaDriftError(error);
@@ -192,7 +213,8 @@ export function initializeSchema(db: SqliteDatabase): void {
   assertSlackDeliveryAttemptsSchema(db);
   assertCronRunsSchema(db);
   assertSocialSignalItemsSchema(db);
-  db.pragma("user_version = 6");
+  assertLlmUsageLogsSchema(db);
+  db.pragma("user_version = 7");
 }
 
 function sqliteObjectExists(db: SqliteDatabase, type: string, name: string): boolean {
@@ -230,8 +252,65 @@ function isKnownSchemaDriftError(message: string): boolean {
     message.includes("active_send_claim") ||
     message.includes("social_signal_items") ||
     message.includes("outbound_urls_json") ||
-    message.includes("linked_official_evidence_ids_json")
+    message.includes("linked_official_evidence_ids_json") ||
+    message.includes("llm_usage_logs") ||
+    message.includes("input_tokens") ||
+    message.includes("estimated_cost_usd")
   );
+}
+
+function assertLlmUsageLogsSchema(db: SqliteDatabase): void {
+  const columns = db.prepare("PRAGMA table_info(llm_usage_logs)").all() as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    pk: number;
+  }>;
+
+  const expectedColumns = new Map([
+    ["id", { type: "TEXT", notnull: false, pk: true }],
+    ["report_date", { type: "TEXT", notnull: true, pk: false }],
+    ["purpose", { type: "TEXT", notnull: true, pk: false }],
+    ["provider_name", { type: "TEXT", notnull: true, pk: false }],
+    ["model_name", { type: "TEXT", notnull: true, pk: false }],
+    ["candidate_count", { type: "INTEGER", notnull: true, pk: false }],
+    ["input_tokens", { type: "INTEGER", notnull: true, pk: false }],
+    ["output_tokens", { type: "INTEGER", notnull: true, pk: false }],
+    ["total_tokens", { type: "INTEGER", notnull: true, pk: false }],
+    ["estimated_cost_usd", { type: "REAL", notnull: true, pk: false }],
+    ["status", { type: "TEXT", notnull: true, pk: false }],
+    ["error_message", { type: "TEXT", notnull: false, pk: false }],
+    ["created_at", { type: "TEXT", notnull: true, pk: false }]
+  ]);
+
+  for (const [name, expected] of expectedColumns) {
+    const column = columns.find((candidate) => candidate.name === name);
+    if (!column) {
+      throw new Error(`llm_usage_logs schema drift: missing column ${name}`);
+    }
+    if (column.type.toUpperCase() !== expected.type) {
+      throw new Error(`llm_usage_logs schema drift: column ${name} type is ${column.type}, expected ${expected.type}`);
+    }
+    if (Boolean(column.notnull) !== expected.notnull) {
+      throw new Error(
+        `llm_usage_logs schema drift: column ${name} notnull is ${column.notnull}, expected ${
+          expected.notnull ? 1 : 0
+        }`
+      );
+    }
+    if (Boolean(column.pk) !== expected.pk) {
+      throw new Error(
+        `llm_usage_logs schema drift: column ${name} primary key is ${column.pk}, expected ${expected.pk ? 1 : 0}`
+      );
+    }
+  }
+
+  if (columns.length !== expectedColumns.size) {
+    throw new Error(`llm_usage_logs schema drift: expected ${expectedColumns.size} columns, found ${columns.length}`);
+  }
+
+  assertIndexColumns(db, "idx_llm_usage_logs_report_date", ["report_date"]);
+  assertIndexColumns(db, "idx_llm_usage_logs_created_at", ["created_at"]);
 }
 
 function assertSocialSignalItemsSchema(db: SqliteDatabase): void {

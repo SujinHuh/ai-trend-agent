@@ -69,6 +69,20 @@ export function createSocialSignalId(input: { sourceId: string; canonicalUrl: st
   return `social_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
+export function createLlmUsageLogId(input: {
+  reportDate: string;
+  purpose: string;
+  providerName: string;
+  modelName: string;
+  createdAt: string;
+  sequence: number;
+}): string {
+  const hash = sha256(
+    [input.reportDate, input.purpose, input.providerName, input.modelName, input.createdAt, input.sequence].join("|")
+  );
+  return `llm_usage_${hash.slice(0, HASH_PREFIX_LENGTH)}`;
+}
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }

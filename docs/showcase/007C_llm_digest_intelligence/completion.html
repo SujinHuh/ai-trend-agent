@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task 007C LLM Digest Intelligence Completion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #18202f;
+        --muted: #5d6a7c;
+        --line: #dce2ea;
+        --accent: #0b6bcb;
+        --ok: #147a42;
+        --code-bg: #f2f5f9;
+        --code-text: #1a2433;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #eaf7ef;
+        color: var(--ok);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #eef2f7;
+        padding: 2px 5px;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 14px;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .metric {
+        display: grid;
+        gap: 6px;
+      }
+
+      .metric strong {
+        font-size: 28px;
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="status">Task 007C Verified</span>
+        <h1>LLM Digest Intelligence</h1>
+        <p>
+          AI Trend Agent v2의 digest 품질 보강 단계입니다. 기본 Slack/cron 경로는
+          계속 LLM-off로 유지하고, <code>--llm-digest</code> 또는
+          <code>LLM_DIGEST_ENABLED=true</code>가 켜진 injectable provider 경로에서만
+          top candidate를 LLM으로 보강합니다.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="card metric">
+          <span>진행률</span>
+          <strong>13 / 13</strong>
+          <p>구현, 중간 검수 수정, validation, completion report, PR handoff까지 완료 대상입니다.</p>
+        </div>
+        <div class="card metric">
+          <span>테스트</span>
+          <strong>144 passed</strong>
+          <p>22개 테스트 파일이 통과했습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>LLM 기본값</span>
+          <strong>Off</strong>
+          <p>기존 crawler-only Slack/cron 경로는 provider를 호출하지 않습니다.</p>
+        </div>
+        <div class="card metric">
+          <span>Candidate limit</span>
+          <strong>5 / 10</strong>
+          <p>기본 5개, 최대 10개 top digest candidate만 prompt에 들어갑니다.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>무엇을 만들었나</h2>
+        <ul>
+          <li>injectable LLM digest provider interface</li>
+          <li>candidate-only prompt DTO와 secret redaction</li>
+          <li>structured JSON response parser와 candidate ID allow-list</li>
+          <li><code>llm_usage_logs</code> token/cost logging table</li>
+          <li>same-timestamp usage log ID sequence guard</li>
+          <li>deterministic <code>confirmationStatus</code> 보존 enrichment</li>
+          <li>Slack async handoff for enriched summary, why, impact fields</li>
+          <li><code>--llm-digest</code> / <code>LLM_DIGEST_ENABLED=true</code> opt-in path</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>CLI로 직접 확인</h2>
+        <pre><code>npm run slack:preview -- --date=2026-08-03 --limit=5
+npm run slack:preview -- --date=2026-08-03 --limit=5 --llm-digest
+
+# 기본 preview/send/cron은 LLM-off
+# --llm-digest는 provider가 주입된 실행 환경에서만 enrichment를 수행</code></pre>
+        <p>
+          007C MVP는 real provider SDK를 추가하지 않고 provider abstraction과 injectable
+          실행 경로를 제공합니다. 일반 테스트는 외부 LLM 네트워크를 호출하지 않습니다.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Validation</h2>
+          <pre><code>git diff --check       passed
+npm run typecheck      passed
+npm run build          passed
+npm test               passed
+
+22 test files passed
+144 tests passed
+
+focused digest intelligence tests: 10 passed
+CLI/schema/cron regression tests: 45 passed</code></pre>
+        </div>
+        <div class="card">
+          <h2>검수 반영</h2>
+          <ul>
+            <li>pre-implementation sub-agent review 완료</li>
+            <li>middle implementation review에서 token fallback logging gap 발견</li>
+            <li>post-provider parser/save fallback도 실제 usage를 남기도록 수정</li>
+            <li>daily cap을 기존 same-day usage 기준으로 확인하도록 수정</li>
+            <li>CLI/cron opt-in provider wiring 추가</li>
+            <li>usage log ID collision guard와 invalid enum rejection 추가</li>
+            <li>post-fix re-review에서 blocking finding 없음 확인</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>제외한 것</h2>
+        <ul>
+          <li>real external LLM provider SDK adapter</li>
+          <li>multi-model review</li>
+          <li>all-crawled-item summarization</li>
+          <li>Slack interactive personalization</li>
+          <li>LLM output의 confirmed 승격 권한</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>다음 작업</h2>
+        <p>
+          다음 v2 구현 후보는 <strong>Task 008 Domain Expansion</strong>입니다.
+          이후 <strong>Task 009 Personalization</strong>에서 Slack/user preference tuning을 이어갈 수 있습니다.
+        </p>
+      </section>
+
+      <section class="card links">
+        <h2>확인 링크</h2>
+        <ul>
+          <li><a href="../../task/007C_llm_digest_intelligence/phase_status.md">phase_status.md</a></li>
+          <li><a href="../../task/007C_llm_digest_intelligence/validation_report.md">validation_report.md</a></li>
+          <li><a href="./completion.md">completion.md</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
