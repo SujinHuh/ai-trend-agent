@@ -116,17 +116,19 @@ For each step:
 1. Mark only that step In Progress.
 2. Implement the step.
 3. Run the smallest useful local validation for that step.
-4. Run sub-agent review for every implementation step.
+4. Run sub-agent review for risk-bearing implementation steps.
 5. Apply review findings or explicitly document a deferral.
 6. Re-run validation after fixes.
-7. Mark that step Done only after validation and review evidence are recorded.
+7. Mark that step Done only after validation and required review evidence are recorded.
 ```
 
 Do not mark several numbered steps `Done` as a batch unless the validation report says which steps were reviewed together and why batching was appropriate.
 
-An implementation step is any numbered step that changes code, tests, schema, config, parser behavior, ranking, LLM behavior, Slack, cron, deployment, security, credentials, rate limits, legal collection boundaries, public output, or future-scope docs.
+Risk-bearing implementation steps require sub-agent review. These include numbered steps that change schema, parser behavior, ingestion, external APIs, storage, ranking, LLM behavior, Slack, cron, deployment, security, credentials, rate limits, legal collection boundaries, public output, or future-scope docs.
 
-Only non-implementation status steps may skip sub-agent review. Examples: typo fixes, PR URL recording, a phase status line update, or a link-only docs correction. If unsure, treat the step as an implementation step and run review.
+Low-risk steps may be reviewed in a batch or by the final whole-task review. Examples: simple CLI wiring, link-only docs corrections, PR URL recording, phase status updates, or minor text cleanup.
+
+Every task must still run a final whole-task sub-agent review before PR. If unsure whether a step is risk-bearing, run sub-agent review for that step.
 
 For sub-agent-reviewed steps, record:
 
@@ -272,7 +274,7 @@ Working tree: clean / dirty
 
 ## 10. Sub-Agent Review Policy
 
-At the task level, use sub-agent review when the task affects:
+For intermediate step review, the risk-bearing categories are:
 
 - storage schema
 - source ingestion or parsing
@@ -284,7 +286,7 @@ At the task level, use sub-agent review when the task affects:
 
 For small docs-only status updates, local checklist review is enough.
 
-This section does not weaken the numbered step loop. If a numbered step is an implementation step, run sub-agent review before marking it `Done`.
+This section does not weaken the numbered step loop. Risk-bearing numbered steps require sub-agent review before `Done`, and every task requires final whole-task sub-agent review before PR.
 
 Sub-agent review output should be summarized in:
 

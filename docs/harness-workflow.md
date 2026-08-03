@@ -141,7 +141,7 @@ task가 `implementation-sequence.md` 또는 `phase_status.md`에 1번부터 끝�
 Step N Pending
 -> Step N 구현
 -> Step N 로컬 검증
--> Step N 서브 에이전트 검수
+-> 필요 시 Step N 서브 에이전트 검수
 -> 검수 지적 반영
 -> Step N 재검증
 -> Step N Done 기록
@@ -150,13 +150,15 @@ Step N Pending
 
 원칙:
 
-- 구현 step은 모두 서브 에이전트 검수 필수다. 여기서 구현 step은 코드, 테스트, schema, config, parser, ranking, LLM, Slack, cron, deployment, security, credentials, rate limit, legal boundary, public output, future scope docs를 바꾸는 step이다.
-- 단순 오타, 링크 수정, PR URL 기록, phase status 한 줄 갱신처럼 구현 산출물을 바꾸지 않는 상태 기록 step만 로컬 검증으로 처리할 수 있다.
-- Step N 검수가 끝나기 전에는 다음 step을 `Done`으로 넘기지 않는다.
-- 병렬 구현은 가능하지만, 각 step의 완료 기록은 해당 step의 검수 결과와 보완 내역을 포함해야 한다.
-- 여러 step을 한 번에 검수해야 할 때는 validation report에 어떤 step들이 묶였는지와 왜 묶었는지를 기록한다.
+- 모든 step은 로컬 검증과 완료 기록이 필요하다.
+- 리스크가 있는 구현 step은 서브 에이전트 검수 필수다. 여기서 리스크가 있는 구현 step은 schema, parser, ingestion, external API, storage, ranking, LLM, Slack, cron, deployment, security, credentials, rate limit, legal boundary, public output, future scope docs를 바꾸는 step이다.
+- 단순 CLI wiring, 작은 문서 링크 수정, PR URL 기록, phase status 한 줄 갱신처럼 위험도가 낮은 step은 묶어서 검수하거나 최종 전체 검수로 처리할 수 있다.
+- 서브 에이전트 검수가 필요한 step은 검수가 끝나기 전에는 `Done`으로 넘기지 않는다.
+- 병렬 구현은 가능하지만, 각 step의 완료 기록은 로컬 검증 결과와 서브 에이전트 검수 여부를 포함해야 한다.
+- 여러 step을 한 번에 검수할 때는 validation report에 어떤 step들이 묶였는지와 왜 묶었는지를 기록한다.
 - 서브 에이전트 지적이 있으면 수정 내용과 재검증 명령을 `validation_report.md`와 `docs/logs/YYYY-MM-DD.md`에 남긴다.
-- 검수 증거가 없는 step은 완료된 것으로 주장하지 않는다.
+- 모든 task는 PR 전 최종 전체 서브 에이전트 검수를 반드시 거친다.
+- 검수 증거가 필요한 step에 증거가 없으면 완료된 것으로 주장하지 않는다.
 
 ## 6. 오류 처리 루프
 

@@ -38,8 +38,9 @@ Completed after implementation:
 - Additional post-review hardening added cache-hit coverage for repeated HN polling.
 - Final post-fix sub-agent review found no blocking findings for PR.
 - Follow-up user review found the completion HTML still did not match the prior report style closely enough; rewritten to the Task 003/004 status badge, metrics grid, section, and links pattern.
-- Harness docs now require per-numbered-step implement, local validate, sub-agent review, fix, revalidate, and record before marking that step Done.
-- Follow-up sub-agent review found the step-level review rule was still conditional in one place; fixed the harness to require sub-agent review for every implementation step and define the narrow status-only exception.
+- Harness docs now require every numbered step to have local validation and completion records, risk-bearing implementation steps to get sub-agent review before `Done`, and every task to get final whole-task sub-agent review before PR.
+- Follow-up sub-agent review found the step-level review rule was too inconsistent; fixed the harness to use risk-based intermediate review plus mandatory final whole-task review.
+- Follow-up sub-agent review found no blocking findings; one conditional task-level phrase was tightened to avoid optional-reading drift.
 - Final re-check after wording fixes found no blocking findings.
 - Remaining accepted note: `pollingIntervalMinutes` is config metadata in 007B, not an enforced scheduler gate.
 
