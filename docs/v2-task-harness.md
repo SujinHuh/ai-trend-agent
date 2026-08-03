@@ -204,6 +204,11 @@ Required showcase content:
 6. public or local confirmation URL
 7. next task handoff
 
+Report language:
+
+- Write `validation_report.md`, `completion.md`, `completion.html`, and `docs/pr/<NNN_task_slug>.md` in Korean unless the user explicitly asks otherwise.
+- Keep only code identifiers, file paths, commands, enum values, API names, and proper nouns in English when needed.
+
 Local check:
 
 ```text
@@ -216,6 +221,8 @@ GCP check:
 ```text
 http://34.22.67.160/ai-trend-agent/showcase/<NNN_task_slug>/completion.html
 ```
+
+The final user-facing task result must include this GCP URL after confirming HTTP 200 and the task body. Do not finish with only a local file path or localhost URL when the user needs to view the report externally.
 
 Update these references after creating the showcase:
 

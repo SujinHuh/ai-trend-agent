@@ -16,6 +16,11 @@
 6. 로컬 또는 GCP 공개 경로에서 HTML이 열리는지 확인한다.
 7. 실제 확인 URL과 검증 결과를 `docs/logs/YYYY-MM-DD.md`에 기록한다.
 
+보고서 언어 원칙:
+
+- `completion.md`, `completion.html`, `validation_report.md`, PR 문서는 사용자가 별도로 요청하지 않는 한 한글로 작성한다.
+- 코드 식별자, 파일 경로, 명령어, enum, API 이름처럼 원문 보존이 필요한 값만 영어 그대로 둔다.
+
 ## HTML 형식 기준
 
 새 completion HTML은 기존 v2 completion HTML 형식을 따른다. 새 스타일을 만들지 말고 기준 파일의 구조와 CSS skeleton을 복사한 뒤 task 내용만 바꾼다.
@@ -109,5 +114,6 @@ http://34.22.67.160/ai-trend-agent/showcase/001_llm_wiki_local_store/completion.
 원칙:
 
 - 외부 URL은 작업 로그와 최종 응답에 남긴다.
+- task 완료 최종 응답에는 `http://34.22.67.160/ai-trend-agent/showcase/<NNN_task_name>/completion.html` 형식의 GCP 공개 HTML URL을 포함한다.
 - 서버 내부 `curl 200 OK`와 사용자 브라우저 접근 가능성을 구분해 기록한다.
 - HTML의 텍스트와 코드 블록은 사용자가 바로 읽을 수 있어야 한다.
